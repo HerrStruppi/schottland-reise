@@ -9,6 +9,18 @@ aller relevanten Bahn- und Buslinien mit Fahrzeiten.
 „Zum Home-Bildschirm“. Beim ersten Öffnen lädt die App automatisch das
 Offline-Kartenpaket (~92 MB); danach funktioniert alles ohne Netz.
 
+**Zugang:** Die App ist mit einem Passwort-Gate versehen (Standard:
+`cape-wrath-2026`, danach Namen wählen). Ändern: neuen SHA-256-Hex-Hash in
+`index.html` (`GATE.hash`) eintragen (`echo -n 'neues-pw' | shasum -a 256`).
+Hinweis: Das Gate ist Komfort-Schutz im Client – das Repo selbst ist öffentlich.
+
+**Features:** Etappen-Modus mit Kurzbeschreibung, Komoot-Fotos
+(`stage-info-data.js`, Fotos werden vom Komoot-CDN geladen und auf dem Gerät
+gecacht, nicht im Repo gespeichert), 5-Sterne-Bewertung pro Etappe (lokal pro
+Gerät, `localStorage`), Zeltplatz-Kandidaten mit Quellen (`camps-data.js`,
+Karte ab Zoom 10 + im Etappen-Sheet), Linien-Modus mit Fahrplantabellen und
+„Zeiten prüfen“-Links zu den offiziellen Seiten.
+
 ## Installation & Updates
 
 - **Hosting**: GitHub Pages, Deploy per GitHub Action bei jedem Push auf `main`
@@ -40,6 +52,9 @@ Offline-Kartenpaket (~92 MB); danach funktioniert alles ohne Netz.
 | `trails-data.js` | Generierte Trail-Daten (`window.TRAILS`): pro Etappe Name, Start/Ziel, km, Höhenmeter und eigene Koordinaten. **Nicht von Hand editieren** – mit `gpx-to-trails.py` neu erzeugen. |
 | `transit-data.js` | ÖPNV-Daten (`window.TRANSIT`): Linien mit Strecken, Halten (inkl. Koordinaten), Fahrplantabellen, Hinweisen und Warnungen. Von Hand gepflegt, Quelle: `fahrplaene.md`. |
 | `gpx-to-trails.py` | Konverter: liest die GPX-Dateien aus `gpx/`, vereinfacht (Douglas-Peucker ~6 m) und schreibt `trails-data.js`. Enthält die Ortsnamen der CWT-Etappen (`CWT_NAMES`). |
+| `stage-info-data.js` | Etappen-Kurztexte + Komoot-Highlight-Foto-URLs (generiert, Stand Juli 2026) |
+| `camps-data.js` | Zeltplatz-Kandidaten mit Beschreibung und Quelle (von Hand gepflegt) |
+| `vendor/flavor-scotland.js` | Farbschema der Vektorkarte (OSM-Carto-angelehnt, generiert aus @protomaps/basemaps `light`) |
 | `fahrplaene.md` | Zug- und Busfahrpläne als Text (Quelle der Fahrplantabellen) |
 | `gpx/West-Highland-Way-komplett.gpx` | 12 Etappen als benannte Tracks, mit Höhendaten (Original-Export) |
 | `gpx/Cape-Wrath-Trail-komplett.gpx` | 15 Etappen als benannte Tracks, mit Höhendaten (auf ~6 m vereinfachter Re-Export aus Komoot, Juli 2026) |

@@ -32,12 +32,21 @@ SOURCES = {
 OUT = os.path.join(HERE, "trails-data.js")
 TOLERANCE_DEG = 6e-5  # ~6 m in Breitengrad
 
+# Etappen an Stationen/Orten mit Infrastruktur teilen (wie die n.5-Etappen
+# des WHW): Etappenname -> (Ortsname, lat, lng des Teilungspunkts).
+# Geteilt wird am nächstgelegenen Trackpunkt.
+SPLITS = {
+    "CWT 4": ("Kinloch Hourn", 57.1004, -5.3760),
+    "CWT 14": ("Kinlochbervie", 58.4610, -5.0503),
+}
+
 # Start-/Zielorte der CWT-Etappen (Komoot-Namen sind nur nummeriert)
 CWT_NAMES = {
     "CWT 1": ("Fort William (Camusnagaul)", "Glenfinnan"),
     "CWT 2": ("Glenfinnan", "Strathan (Loch Arkaig)"),
     "CWT 3": ("Strathan (Loch Arkaig)", "Barrisdale"),
-    "CWT 4": ("Barrisdale", "Morvich (Shiel Bridge)"),
+    "CWT 4": ("Barrisdale", "Kinloch Hourn"),
+    "CWT 4.5": ("Kinloch Hourn", "Morvich (Shiel Bridge)"),
     "CWT 5": ("Morvich (Shiel Bridge)", "Maol-bhuidhe"),
     "CWT 6": ("Maol-bhuidhe", "Craig (Achnashellach)"),
     "CWT 7": ("Craig (Achnashellach)", "Kinlochewe"),
@@ -47,7 +56,8 @@ CWT_NAMES = {
     "CWT 11": ("Oykel Bridge", "Inchnadamph"),
     "CWT 12": ("Inchnadamph", "Kylesku"),
     "CWT 13": ("Kylesku", "Rhiconich"),
-    "CWT 14": ("Rhiconich", "Sandwood Bay"),
+    "CWT 14": ("Rhiconich", "Kinlochbervie"),
+    "CWT 14.5": ("Kinlochbervie", "Sandwood Bay"),
     "CWT 15": ("Sandwood Bay", "Cape Wrath"),
 }
 
@@ -117,6 +127,20 @@ def stage_endpoints(key, name):
     return (m.group(1), m.group(2)) if m else (None, None)
 
 
+def split_track(name, pts, eles):
+    """Teilt einen Track am nächstgelegenen Punkt zum SPLITS-Eintrag."""
+    if name not in SPLITS:
+        return [(name, pts, eles)]
+    _, lat, lng = SPLITS[name]
+    idx = min(range(len(pts)), key=lambda i: haversine_km(pts[i], (lat, lng)))
+    if idx < 2 or idx > len(pts) - 3:
+        return [(name, pts, eles)]
+    m = re.search(r"(\d+)\s*$", name)
+    half = f"{name[:m.start(1)]}{m.group(1)}.5" if m else name + ".5"
+    return [(name, pts[:idx + 1], eles[:idx + 1]),
+            (half, pts[idx:], eles[idx:])]
+
+
 def read_trail(key, path):
     tree = ET.parse(path)
     stages = []
@@ -130,15 +154,16 @@ def read_trail(key, path):
                 eles.append(float(ele) if ele is not None else None)
         if not pts:
             continue
-        km = sum(haversine_km(pts[i], pts[i + 1]) for i in range(len(pts) - 1))
-        frm, to = stage_endpoints(key, name)
-        num = re.search(r"([\d.]+)\s*$", name.split("(")[0])
-        stages.append({
-            "id": f"{key}-{num.group(1) if num else len(stages) + 1}",
-            "name": name, "from": frm, "to": to,
-            "km": round(km, 1), "up": int(round(ascent(eles))),
-            "coords": [[round(la, 5), round(lo, 5)] for la, lo in simplify(pts, TOLERANCE_DEG)],
-        })
+        for part_name, part_pts, part_eles in split_track(name, pts, eles):
+            km = sum(haversine_km(part_pts[i], part_pts[i + 1]) for i in range(len(part_pts) - 1))
+            frm, to = stage_endpoints(key, part_name)
+            num = re.search(r"([\d.]+)\s*$", part_name.split("(")[0])
+            stages.append({
+                "id": f"{key}-{num.group(1) if num else len(stages) + 1}",
+                "name": part_name, "from": frm, "to": to,
+                "km": round(km, 1), "up": int(round(ascent(part_eles))),
+                "coords": [[round(la, 5), round(lo, 5)] for la, lo in simplify(part_pts, TOLERANCE_DEG)],
+            })
     return stages
 
 

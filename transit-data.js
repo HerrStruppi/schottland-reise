@@ -5,6 +5,7 @@ window.TRANSIT = {
   lines: [
     {
       id: 'whl', kind: 'zug', color: '#3f4d55',
+      check: { label: 'ScotRail', url: 'https://www.scotrail.co.uk/plan-your-journey' },
       name: 'West Highland Line', sub: 'Glasgow – Fort William – Mallaig',
       days: 'Mo–Sa 3×, So 2×',
       coords: [
@@ -54,6 +55,7 @@ window.TRANSIT = {
     },
     {
       id: 'sbahn', kind: 'zug', color: '#6d7f8a',
+      check: { label: 'ScotRail', url: 'https://www.scotrail.co.uk/plan-your-journey' },
       name: 'S-Bahn Glasgow – Milngavie', sub: 'Zubringer zum WHW-Start',
       days: 'ca. alle 30 Min.',
       coords: [[55.8580,-4.2580],[55.887,-4.284],[55.905,-4.310],[55.9411,-4.3167]],
@@ -66,6 +68,7 @@ window.TRANSIT = {
     },
     {
       id: 'kyle', kind: 'zug', color: '#5c6f7a',
+      check: { label: 'ScotRail', url: 'https://www.scotrail.co.uk/plan-your-journey' },
       name: 'Kyle Line', sub: 'Inverness – Kyle of Lochalsh',
       days: 'Mo–Sa ca. 4×, So weniger',
       coords: [
@@ -87,6 +90,7 @@ window.TRANSIT = {
     },
     {
       id: 'b915', kind: 'bus', color: '#3c6e9e',
+      check: { label: 'citylink.co.uk', url: 'https://www.citylink.co.uk/timetables.php' },
       name: 'Citylink 915', sub: 'Glasgow – Fort William – Skye',
       days: 'täglich 3×',
       coords: [
@@ -127,6 +131,7 @@ window.TRANSIT = {
     },
     {
       id: 'b961', kind: 'bus', color: '#5f5591',
+      check: { label: 'bustimes.org', url: 'https://bustimes.org/search?q=ullapool+inverness' },
       name: 'Citylink 961 + D&E 61', sub: 'Inverness – Ullapool',
       days: 'mehrmals täglich',
       coords: [
@@ -147,6 +152,7 @@ window.TRANSIT = {
     },
     {
       id: 'b700', kind: 'bus', color: '#2f7d68',
+      check: { label: 'bustimes.org', url: 'https://bustimes.org/operators/westerbus' },
       name: 'Westerbus 700A / 700 / 707', sub: 'Inverness – Kinlochewe / Dundonnell',
       days: 'nur einzelne Tage!',
       coords: [
@@ -175,6 +181,7 @@ window.TRANSIT = {
     },
     {
       id: 'b805', kind: 'bus', color: '#a84a6b',
+      check: { label: 'thedurnessbus.com', url: 'https://thedurnessbus.com' },
       name: 'Bus 805 Far North', sub: 'Durness – Lairg – Inverness (Durness Bus)',
       days: 'Mo–Sa 1×',
       coords: [
@@ -208,7 +215,24 @@ window.TRANSIT = {
       warns: ['Kein Sonntagsverkehr!']
     },
     {
+      id: 'fardlui', kind: 'faehre', color: '#4d6a75',
+      check: { label: 'ardlui.com', url: 'https://ardlui.com' },
+      name: 'Fähre Ardleish – Ardlui', sub: 'Loch Lomond: WHW-Ostufer → Bahnhof Ardlui',
+      days: 'saisonal, auf Zuruf',
+      coords: [[56.3006,-4.7075],[56.3025,-4.7210]],
+      stops: [
+        { name: 'Ardleish (WHW)', lat: 56.3006, lng: -4.7075 },
+        { name: 'Ardlui (Bahnhof/Hotel)', lat: 56.3025, lng: -4.7210 }
+      ],
+      tables: [],
+      notes: [
+        'Kleine Passagierfähre des Ardlui Hotels, ca. April–Oktober tagsüber.',
+        'Am Ardleish-Steg die Signalkugel hissen, dann wird man abgeholt. Details/Zeiten: ardlui.com.'
+      ]
+    },
+    {
       id: 'fcam', kind: 'faehre', color: '#4d6a75',
+      check: { label: 'lochabertransport.org.uk', url: 'https://lochabertransport.org.uk' },
       name: 'Fähre Fort William – Camusnagaul', sub: 'Start des Cape Wrath Trail',
       days: 'Mo–Sa mehrmals',
       coords: [[56.8190,-5.1120],[56.8161,-5.1145]],
@@ -221,6 +245,7 @@ window.TRANSIT = {
     },
     {
       id: 'fcw', kind: 'faehre', color: '#4d6a75',
+      check: { label: 'visitcapewrath.com', url: 'https://www.visitcapewrath.com' },
       name: 'Fähre + Minibus Cape Wrath', sub: 'Keoldale – Kap (ca. Mai–Sep)',
       days: 'keine festen Zeiten',
       coords: [[58.559,-4.775],[58.566,-4.786],[58.60,-4.90],[58.6247,-4.9990]],
@@ -246,12 +271,15 @@ window.TRANSIT = {
     'whw-1': ['Anreise: S-Bahn Glasgow → Milngavie, ca. alle 30 Min.'],
     'whw-6': ['Kingshouse: Citylink 915 hält am Glencoe Ski Centre (ca. 3 km westlich).'],
     'cwt-1': ['Start mit der Passagierfähre Fort William → Camusnagaul.'],
+    'cwt-4': ['Kinloch Hourn: Straßenende, kein Linienverkehr. B&B + Tea Room (Kinlochhourn Farm).'],
+    'cwt-4.5': ['Kinloch Hourn: Straßenende, kein Linienverkehr. B&B + Tea Room (Kinlochhourn Farm).'],
     'cwt-5': ['Maol-bhuidhe: Bothy, kein ÖPNV, kein Netz.'],
     'cwt-6': ['Craig liegt an der Kyle Line zwischen Achnashellach und Strathcarron (nächste Bahnhöfe).'],
     'cwt-10': ['Oykel Bridge: kein Linienverkehr.'],
     'cwt-11': ['Inchnadamph: 2026 kein Linienbus! Nur Taxi (ab Ullapool/Lochinver) oder trampen.'],
     'cwt-12': ['Inchnadamph & Kylesku: 2026 kein Linienbus! Lochinver–Ullapool: Bus 809, Mo–Fr 1× früh morgens.'],
-    'cwt-14': ['Sandwood Bay: kein ÖPNV – nächster Bus (805) in Kinlochbervie/Rhiconich.']
+    'cwt-14': ['Kinlochbervie: Laden (London Stores), Unterkünfte, Bus 805.'],
+    'cwt-14.5': ['Sandwood Bay: kein ÖPNV – nächster Bus (805) in Kinlochbervie/Rhiconich.']
   },
 
   generalWarns: [

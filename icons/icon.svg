@@ -1,14 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="0" fill="#20313b"/>
-  <!-- Berge -->
-  <path d="M40 356 L150 200 L215 285 L300 150 L400 290 L472 356 Z" fill="#39505e"/>
-  <path d="M300 150 L400 290 L340 290 Z" fill="#4a6273"/>
-  <circle cx="300" cy="150" r="0" fill="none"/>
-  <!-- Schnee/Licht auf Gipfel -->
-  <path d="M300 150 L330 195 L312 190 L296 205 L282 178 Z" fill="#e8eef2"/>
-  <!-- Trails -->
-  <path d="M60 430 C150 380 190 440 260 400 C330 360 360 420 452 370"
-        fill="none" stroke="#4caf50" stroke-width="26" stroke-linecap="round"/>
-  <path d="M60 470 C160 430 210 480 290 445 C360 415 400 460 452 420"
-        fill="none" stroke="#ff7043" stroke-width="26" stroke-linecap="round" stroke-dasharray="2 44"/>
+  <rect width="512" height="512" fill="#f5f5f3"/>
+  <!-- Schottland, vereinfacht: schräge Nordküste, Moray-Firth-Kerbe,
+       Aberdeen-Bogen, schmaler Süden, zerklüfteter Westen (weich) -->
+  <path d="M168 92
+           C 200 74, 250 82, 296 96
+           C 330 106, 352 118, 348 140
+           C 344 158, 316 158, 312 178
+           C 308 198, 344 196, 372 216
+           C 396 234, 394 268, 380 292
+           C 368 312, 344 318, 336 342
+           C 328 366, 336 388, 320 410
+           C 304 432, 272 444, 244 434
+           C 220 426, 214 402, 198 382
+           C 184 364, 162 356, 154 334
+           C 146 312, 158 296, 150 274
+           C 142 252, 122 244, 118 220
+           C 114 198, 130 184, 128 162
+           C 126 140, 142 106, 168 92 Z"
+        fill="none" stroke="#3c3c3a" stroke-width="17"
+        stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- Route: gestrichelt von Süd nach Cape Wrath -->
+  <path d="M282 408 C 262 372, 280 336, 258 300 C 238 266, 250 228, 226 194 C 206 166, 196 138, 186 112"
+        fill="none" stroke="#3c3c3a" stroke-width="15"
+        stroke-linecap="round" stroke-dasharray="0.5 34"/>
 </svg>

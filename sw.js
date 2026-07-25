@@ -11,8 +11,9 @@ const PKG_KEY = 'pkg.pmtiles';
 
 const SHELL = [
   './', 'index.html', 'trails-data.js', 'transit-data.js', 'tiles-meta.json',
+  'stage-info-data.js', 'camps-data.js',
   'vendor/leaflet.min.js', 'vendor/leaflet.min.css',
-  'vendor/protomaps-leaflet.js', 'vendor/pmtiles.js',
+  'vendor/protomaps-leaflet.js', 'vendor/pmtiles.js', 'vendor/flavor-scotland.js',
   'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',
   'icons/apple-touch-icon.png'
 ];
@@ -103,6 +104,21 @@ self.addEventListener('fetch', e => {
 
   // Das Offline-Paket selbst nie abfangen (Download läuft über die Seite)
   if (url.pathname.endsWith('.pmtiles')) return;
+
+  // Etappen-Fotos (Wikimedia/Geograph/Komoot): cache first, dauerhaft offline
+  if (/wikimedia\.org|wikipedia\.org|geograph\.org|komoot\.|cloudfront\.net/.test(url.host)) {
+    e.respondWith((async () => {
+      const cache = await caches.open('photos-v1');
+      const hit = await cache.match(e.request);
+      if (hit) return hit;
+      try {
+        const resp = await fetch(e.request);
+        if (resp && (resp.ok || resp.type === 'opaque')) cache.put(e.request, resp.clone());
+        return resp;
+      } catch (err) { return new Response('', { status: 503 }); }
+    })());
+    return;
+  }
 
   // Online-Rasterkacheln (OSM/OpenTopoMap): network first, Cache als Fallback
   if (/tile\.openstreetmap\.org|opentopomap\.org/.test(url.host)) {

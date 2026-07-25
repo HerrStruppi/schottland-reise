@@ -9,7 +9,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<title>Highlands 2026 – Trail &amp; Transport</title>
+<title>Highlands-Reise 2026</title>
 <link rel="stylesheet" href="vendor/leaflet.min.css">
 <style>
   :root {
@@ -52,9 +52,9 @@
 
   /* ---------- Bottom Sheet ---------- */
   #sheet {
-    position: fixed; left: 0; right: 0; bottom: 0; top: 0; z-index: 1200;
-    transform: translateY(calc(100% - 176px - var(--safe-b)));
-    transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200;
+    height: calc(176px + var(--safe-b));
+    transition: height 0.25s cubic-bezier(.4,0,.2,1);
     pointer-events: none;
   }
   #sheet.dragging { transition: none; }
@@ -65,9 +65,9 @@
     box-shadow: 0 -1px 12px rgba(0,0,0,0.28);
     display: flex; flex-direction: column;
   }
-  #grip { padding: 8px 0 4px; flex: none; cursor: grab; touch-action: none; }
+  #grip { padding: 14px 0 12px; flex: none; cursor: grab; touch-action: none; }
   #grip::before {
-    content: ''; display: block; width: 38px; height: 4px; border-radius: 2px;
+    content: ''; display: block; width: 44px; height: 5px; border-radius: 3px;
     background: #dadce0; margin: 0 auto;
   }
   #sheetContent {
@@ -82,10 +82,14 @@
     color: var(--muted); margin: 18px 0 6px; font-weight: 600;
   }
   .topline { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .topline .spacer { flex: 1; }
   .backbtn {
-    flex: none; width: 34px; height: 34px; border-radius: 50%; border: none;
-    background: #f1f3f4; font-size: 17px; cursor: pointer; color: var(--ink);
+    flex: none; width: 38px; height: 38px; border-radius: 50%; border: none;
+    background: #f1f3f4; cursor: pointer; color: var(--ink);
+    display: inline-flex; align-items: center; justify-content: center;
   }
+  .backbtn:disabled { opacity: 0.3; cursor: default; }
+  .backbtn .ic { width: 19px; height: 19px; }
   .chip {
     display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
     background: #f1f3f4; color: var(--muted); font-weight: 500;
@@ -117,11 +121,20 @@
   .statgrid div b { display: block; font-size: 17px; font-weight: 600; }
   .statgrid div span { font-size: 11.5px; color: var(--muted); }
 
-  .note {
-    font-size: 13px; line-height: 1.5; background: #f8f9fa; border-radius: 10px;
-    padding: 9px 12px; margin: 6px 0;
+  .ic {
+    width: 1.15em; height: 1.15em; display: inline-block;
+    vertical-align: -0.2em; flex: none;
   }
-  .note.warn { background: #fce8e6; color: #7c1f1c; }
+  .note {
+    font-size: 13px; line-height: 1.5; border-radius: 10px;
+    padding: 9px 12px; margin: 6px 0;
+    background: #e8f0fe; color: #1a4c94;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .note .ic { margin-top: 2px; }
+  .note > div { min-width: 0; }
+  .note.ok { background: #e6f4ea; color: #0f5c2e; }
+  .note.warn { background: #fce8e6; color: #a50e0e; }
   .note a { color: inherit; }
 
   table.tt { border-collapse: collapse; width: 100%; margin: 4px 0 2px; font-size: 13.5px; }
@@ -136,15 +149,9 @@
   .tt-title { font-size: 13px; font-weight: 600; margin: 14px 0 2px; }
   .tt-note { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
 
-  .navbtns { display: flex; gap: 10px; margin-top: 16px; }
-  .navbtns button {
-    flex: 1; padding: 10px; border-radius: 24px; border: 1px solid var(--line);
-    background: #fff; font-size: 13.5px; cursor: pointer; color: var(--ink);
-  }
-  .navbtns button:disabled { opacity: 0.35; }
-
   .telbtn {
-    display: inline-block; margin: 4px 8px 4px 0; padding: 8px 14px; border-radius: 24px;
+    display: inline-flex; align-items: center; gap: 6px;
+    margin: 4px 8px 4px 0; padding: 8px 14px; border-radius: 24px;
     background: #e8f0fe; color: #1a56ab; text-decoration: none; font-size: 13.5px; font-weight: 500;
   }
 
@@ -187,13 +194,96 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap;
   }
   #toast.show { opacity: 1; }
+
+  /* ---------- Sektionen, Sterne, Fotos, Zelt, Gate ---------- */
+  .chev { color: #bdc1c6; width: 18px; height: 18px; flex: none; }
+  details.sec summary { list-style: none; cursor: pointer; display: flex; align-items: center; }
+  details.sec summary::-webkit-details-marker { display: none; }
+  details.sec summary h2 { flex: 1; }
+  details.sec summary::after {
+    content: ''; width: 8px; height: 8px; border-right: 1.8px solid #9aa0a6;
+    border-bottom: 1.8px solid #9aa0a6; transform: rotate(45deg); transition: transform 0.2s;
+    margin: 10px 6px 0 0;
+  }
+  details.sec[open] summary::after { transform: rotate(-135deg); margin-top: 16px; }
+  .offok {
+    display: flex; align-items: center; gap: 6px; font-size: 12.5px;
+    color: #137333; font-weight: 500; margin: 2px 0;
+  }
+  .offok.muted { color: var(--muted); font-weight: 400; }
+  .offok .ic { width: 15px; height: 15px; }
+  .rowstars { color: #f5b301; display: inline-flex; margin-top: 1px; }
+  .rowstars .ic { width: 12px; height: 12px; }
+  .starsrow {
+    display: flex; align-items: center; gap: 2px; margin: 10px 0 4px;
+    font-size: 12.5px; color: var(--muted);
+  }
+  .starsrow span { margin-right: 8px; }
+  .starbtn {
+    border: none; background: none; padding: 4px; cursor: pointer; color: #c4c9ce; line-height: 0;
+  }
+  .starbtn .ic { width: 24px; height: 24px; }
+  .starbtn.on { color: #f5b301; }
+  .stagetext { font-size: 13.5px; line-height: 1.55; margin: 10px 0 4px; }
+  .photos {
+    display: flex; gap: 8px; overflow-x: auto; margin: 10px -16px 4px;
+    padding: 0 16px; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+  }
+  .photos figure { flex: none; margin: 0; scroll-snap-align: start; width: 220px; }
+  .photos img {
+    width: 220px; height: 140px; object-fit: cover; border-radius: 10px;
+    background: #eceff1; display: block;
+  }
+  .photos figcaption {
+    font-size: 10px; color: #9aa0a6; padding: 2px 2px 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .checklink {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500;
+    color: #1a56ab; background: #e8f0fe; border-radius: 24px; padding: 6px 12px;
+    text-decoration: none; white-space: nowrap;
+  }
+  .checklink .ic { width: 14px; height: 14px; }
+  .campicon {
+    display: flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%; background: #4b6b52; color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4); border: 1.5px solid #fff;
+  }
+  .campicon .ic { width: 13px; height: 13px; }
+  body:not(.show-camps) .campicon { display: none; }
+  body.line-focus .wpt-label { display: none; }
+
+  #gate {
+    position: fixed; inset: 0; z-index: 3000; background: #22333d;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  #gate[hidden] { display: none; }
+  .gatecard {
+    background: #fff; border-radius: 20px; padding: 28px 24px; width: 100%;
+    max-width: 340px; text-align: center; box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+  }
+  .gatecard img { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 10px; }
+  .gatecard h1 { margin: 0 0 4px; }
+  .gatecard p { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  .gatecard input {
+    width: 100%; padding: 11px 14px; font-size: 15px; border: 1px solid #dadce0;
+    border-radius: 12px; margin-bottom: 12px; text-align: center;
+  }
+  .gatenames { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+  .gatename {
+    padding: 7px 14px; border-radius: 24px; border: 1px solid #dadce0; background: #fff;
+    font-size: 13.5px; cursor: pointer; color: var(--ink);
+  }
+  .gatename.on { background: #1a73e8; border-color: #1a73e8; color: #fff; font-weight: 600; }
+  .gatecard .offbtn { width: 100%; padding: 11px; font-size: 14.5px; }
+  .gateerr { color: var(--warn); min-height: 18px; margin-top: 10px; }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
 <div id="brand" title="Zur Übersicht">
-  <b>Highlands 2026</b><span>WHW · Cape Wrath Trail</span>
+  <b>Highlands-Reise 2026</b><span>Klara, Simi und Zacha</span>
 </div>
 <div class="mapbtns">
   <button class="mapbtn" id="baseToggle" title="Karte/Gelände">⛰</button>
@@ -207,17 +297,54 @@
   </div>
 </div>
 
+<div id="gate" hidden>
+  <div class="gatecard">
+    <img src="icons/icon-192.png" alt="">
+    <h1>Highlands-Reise 2026</h1>
+    <p>Privater Reiseplaner – bitte Passwort eingeben und Namen wählen.</p>
+    <input id="gatePw" type="password" placeholder="Passwort" autocomplete="off">
+    <div class="gatenames" id="gateNames"></div>
+    <button id="gateGo" class="offbtn">Los geht’s</button>
+    <p class="gateerr" id="gateErr"></p>
+  </div>
+</div>
+
 <script src="trails-data.js"></script>
 <script src="transit-data.js"></script>
+<script src="stage-info-data.js"></script>
+<script src="camps-data.js"></script>
 <script src="vendor/leaflet.min.js"></script>
 <script src="vendor/protomaps-leaflet.js"></script>
+<script src="vendor/flavor-scotland.js"></script>
 <script>
 'use strict';
 const TRAILS = window.TRAILS || {};
 const TRANSIT = window.TRANSIT || { lines: [], stageNotes: {}, generalWarns: [] };
 const TRAIL_COLORS = { whw: getCss('--whw'), cwt: getCss('--cwt') };
-const KIND_ICON = { zug: '🚂', bus: '🚌', faehre: '⛴' };
 function getCss(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+/* Icons im Heroicons-Stil (outline, 24er-Viewbox, stroke) */
+const ICON_PATHS = {
+  train: '<path d="M7.5 3.75h9A2.25 2.25 0 0 1 18.75 6v8.25a2.25 2.25 0 0 1-2.25 2.25h-9a2.25 2.25 0 0 1-2.25-2.25V6A2.25 2.25 0 0 1 7.5 3.75Z"/><path d="M5.25 9.75h13.5"/><path d="M8.7 16.5 6.4 20.25M15.3 16.5l2.3 3.75"/><path d="M9 13.13h.01M15 13.13h.01"/>',
+  bus: '<path d="M4.5 6A2.25 2.25 0 0 1 6.75 3.75h10.5A2.25 2.25 0 0 1 19.5 6v10.5a1.5 1.5 0 0 1-1.5 1.5H6a1.5 1.5 0 0 1-1.5-1.5V6Z"/><path d="M4.5 11.25h15"/><path d="M7.5 18v1.9M16.5 18v1.9"/><path d="M8 14.63h.01M16 14.63h.01"/>',
+  ferry: '<path d="M3.9 15.4 12 18.4l8.1-3-1.05 3.53a2.25 2.25 0 0 1-2.16 1.6H7.11a2.25 2.25 0 0 1-2.16-1.6L3.9 15.4Z"/><path d="M6.75 14.6V8.25a1.5 1.5 0 0 1 1.5-1.5h7.5a1.5 1.5 0 0 1 1.5 1.5v6.35"/><path d="M12 6.75V4.5"/>',
+  phone: '<path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/>',
+  check: '<path d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>',
+  download: '<path d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/>',
+  warn: '<path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>',
+  info: '<path d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"/>',
+  install: '<path d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3M10.5 19.5h3"/>',
+  arrowLeft: '<path d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/>',
+  chevLeft: '<path d="M15.75 19.5 8.25 12l7.5-7.5"/>',
+  chevRight: '<path d="m8.25 4.5 7.5 7.5-7.5 7.5"/>',
+  star: '<path d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/>',
+  starFill: '<path fill="currentColor" stroke="none" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/>',
+  tent: '<path d="M12 4.25 2.75 19.5h18.5L12 4.25Z"/><path d="M12 10.5 8.25 19.5M12 10.5l3.75 9"/>',
+  link: '<path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>'
+};
+const icon = (name, cls) => '<svg class="ic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_PATHS[name] + '</svg>';
+const KIND_ICON = { zug: icon('train'), bus: icon('bus'), faehre: icon('ferry') };
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 /* ================= Karte ================= */
 const map = L.map('map', { zoomControl: false, attributionControl: true })
@@ -234,7 +361,9 @@ const vectorSupported = 'serviceWorker' in navigator && location.protocol !== 'f
 let vector = null;
 function buildVector() {
   const v = protomapsL.leafletLayer({
-    url: vtBase + 'vt/{z}/{x}/{y}.mvt', flavor: 'light', lang: 'de',
+    url: vtBase + 'vt/{z}/{x}/{y}.mvt',
+    paintRules: protomapsL.paintRules(window.FLAVOR_SCOTLAND),
+    labelRules: protomapsL.labelRules(window.FLAVOR_SCOTLAND, 'de'),
     maxDataZoom: 14, maxZoom: 19,
     attribution: '<a href="https://protomaps.com">Protomaps</a>'
   });
@@ -280,6 +409,7 @@ const fmt = n => String(n).replace('.', ',');
 /* ================= Trails zeichnen ================= */
 const stageLayers = {};   // id -> {line, hit, stage, trailKey}
 const allStages = [];
+const wptMarkers = [];    // Etappenpunkte (werden im Linien-Modus ausgeblendet)
 for (const key of Object.keys(TRAILS)) {
   const color = TRAIL_COLORS[key] || '#333';
   TRAILS[key].stages.forEach((s, i) => {
@@ -301,6 +431,7 @@ for (const key of Object.keys(TRAILS)) {
     }).addTo(map);
     m.bindTooltip(w.name, { permanent: true, direction: 'right', offset: [7, 0], className: 'wpt-label' });
     m.on('click', ev => { L.DomEvent.stopPropagation(ev); showStage(w.stageId); });
+    wptMarkers.push(m);
   });
 }
 
@@ -344,12 +475,23 @@ for (const ln of TRANSIT.lines) {
   lineLayers[ln.id] = group;
 }
 
+/* ---------- Zeltplatz-Kandidaten ---------- */
+for (const c of (window.CAMPS || [])) {
+  const m = L.marker([c.lat, c.lng], {
+    icon: L.divIcon({ className: '', html: `<span class="campicon">${icon('tent')}</span>`, iconSize: [22, 22], iconAnchor: [11, 11] })
+  }).addTo(map);
+  m.bindPopup(`<h3>${esc(c.name)}</h3>${esc(c.text)}` +
+    (c.src ? `<br><a href="${c.src}" target="_blank" rel="noopener">Quelle: ${esc(c.srcName || 'Link')}</a>` : ''),
+    { maxWidth: 260 });
+}
+
 /* Label-Sichtbarkeit nach Zoomstufe */
 function updateLabelVisibility() {
   const z = map.getZoom();
-  document.body.classList.toggle('show-wpt', z >= 8);
-  document.body.classList.toggle('show-stops', z >= 9);
-  document.body.classList.toggle('show-transit-lbl', z >= 8);
+  document.body.classList.toggle('show-wpt', z >= 9);
+  document.body.classList.toggle('show-stops', z >= 10);
+  document.body.classList.toggle('show-transit-lbl', z >= 9);
+  document.body.classList.toggle('show-camps', z >= 10);
 }
 map.on('zoomend', updateLabelVisibility);
 updateLabelVisibility();
@@ -379,20 +521,22 @@ function resetStyles() {
   for (const id in lineLayers) lineLayers[id].lines.forEach((l, i) => {
     if (i % 2 === 0) l.setStyle({ opacity: 0.75, weight: 2.2 });
   });
+  wptMarkers.forEach(m => m.setStyle({ opacity: 1, fillOpacity: 1 }));
 }
 
-function focusStage(id) {
+function focusStage(id, fly) {
   resetStyles();
   for (const sid in stageLayers) {
     if (sid !== id) stageLayers[sid].line.setStyle({ opacity: 0.25 });
   }
   const sel = stageLayers[id];
   sel.line.setStyle({ opacity: 1, weight: 7 });
-  fitWithSheet(sel.line.getBounds());
+  fitWithSheet(sel.line.getBounds(), fly);
 }
 function focusLine(id) {
   resetStyles();
   document.body.classList.add('line-focus');
+  wptMarkers.forEach(m => m.setStyle({ opacity: 0, fillOpacity: 0 }));
   for (const sid in stageLayers) stageLayers[sid].line.setStyle({ opacity: 0.3 });
   for (const lid in lineLayers) {
     if (lid !== id) lineLayers[lid].lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: 0.12 }); });
@@ -404,9 +548,11 @@ function focusLine(id) {
   g.data.coords.forEach(c => b.extend(c));
   fitWithSheet(b);
 }
-function fitWithSheet(bounds) {
+function fitWithSheet(bounds, fly) {
   map.stop();
-  map.fitBounds(bounds, { paddingTopLeft: [30, 70], paddingBottomRight: [30, sheetHeight() + 30], animate: false });
+  const pad = { paddingTopLeft: [30, 70], paddingBottomRight: [30, sheetHeight() + 30] };
+  if (fly) map.flyToBounds(bounds, Object.assign({ duration: 0.7 }, pad));
+  else map.fitBounds(bounds, Object.assign({ animate: false }, pad));
 }
 
 /* ================= Bottom Sheet ================= */
@@ -417,7 +563,7 @@ let snap = 'peek';
 function setSnap(s) {
   snap = s;
   const h = typeof SNAPS[s] === 'function' ? SNAPS[s]() : SNAPS[s];
-  sheet.style.transform = `translateY(calc(100% - ${h}px - var(--safe-b)))`;
+  sheet.style.height = `calc(${h}px + var(--safe-b))`;
 }
 function sheetHeight() {
   return typeof SNAPS[snap] === 'function' ? SNAPS[snap]() : SNAPS[snap];
@@ -431,7 +577,7 @@ function sheetHeight() {
     grip.setPointerCapture(e.pointerId);
     const move = ev => {
       curH = Math.max(80, Math.min(SNAPS.full(), startH + (startY - ev.clientY)));
-      sheet.style.transform = `translateY(calc(100% - ${curH}px - var(--safe-b)))`;
+      sheet.style.height = `calc(${curH}px + var(--safe-b))`;
     };
     const up = () => {
       grip.removeEventListener('pointermove', move);
@@ -444,15 +590,31 @@ function sheetHeight() {
     grip.addEventListener('pointermove', move);
     grip.addEventListener('pointerup', up);
   });
+
+  // Am Ende des Inhalts weiterscrollen -> Schublade automatisch vergrößern
+  let lastAuto = 0;
+  content.addEventListener('scroll', () => {
+    if (snap === 'full') return;
+    if (content.scrollTop + content.clientHeight >= content.scrollHeight - 6) {
+      const now = Date.now();
+      if (now - lastAuto < 800) return;
+      lastAuto = now;
+      setSnap(snap === 'peek' ? 'half' : 'full');
+    }
+  });
 })();
 
 /* ================= Ansichten ================= */
-const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+function ownStars(id) {
+  const r = RATINGS.get(id);
+  if (!r) return '';
+  return `<span class="rowstars">${icon('starFill').repeat(r)}</span>`;
+}
 
 function showOverview() {
   resetStyles();
-  let h = `<h1>Highlands: Trail &amp; Transport</h1>
-    <p class="sub">West Highland Way · Cape Wrath Trail · 21.08.–01.09.2026 — Etappe oder Linie antippen</p>
+  let h = `<h1>Highlands-Reise 2026</h1>
+    <p class="sub">West Highland Way · Cape Wrath Trail · 21.08.–01.09.2026</p>
     <div id="offlineRow"></div>`;
   for (const key of Object.keys(TRAILS)) {
     const t = TRAILS[key];
@@ -461,20 +623,23 @@ function showOverview() {
     h += t.stages.map(s => `
       <div class="row" onclick="showStage('${s.id}')">
         <div class="num" style="background:${TRAIL_COLORS[key]}">${s.id.split('-')[1]}</div>
-        <div class="grow"><div class="t">${esc(s.from)} → ${esc(s.to)}</div></div>
+        <div class="grow"><div class="t">${esc(s.from)} → ${esc(s.to)}</div>${ownStars(s.id)}</div>
         <div class="meta">${fmt(s.km)} km<br>↑ ${s.up} m</div>
-        <div class="chev">›</div>
+        ${icon('chevRight', 'chev')}
       </div>`).join('');
   }
-  h += `<h2>Bahn &amp; Bus</h2>`;
+  h += `<details class="sec"><summary><h2>Bahn, Bus &amp; Fähren · ${TRANSIT.lines.length} Linien</h2></summary>`;
   h += TRANSIT.lines.map(ln => `
     <div class="row" onclick="showLine('${ln.id}')">
       <div class="kicon" style="background:${ln.color}">${KIND_ICON[ln.kind]}</div>
       <div class="grow"><div class="t">${esc(ln.name)}</div><div class="s">${esc(ln.sub)}</div></div>
       <div class="meta">${esc(ln.days)}</div>
-      <div class="chev">›</div>
+      ${icon('chevRight', 'chev')}
     </div>`).join('');
-  h += `<h2>Wichtig</h2>` + TRANSIT.generalWarns.map(w => `<div class="note warn">${esc(w)}</div>`).join('');
+  h += `</details>`;
+  h += `<details class="sec"><summary><h2>Wichtige Hinweise</h2></summary>` +
+    TRANSIT.generalWarns.map(w => `<div class="note warn">${icon('warn')}<div>${esc(w)}</div></div>`).join('') +
+    `<div class="note">${icon('info')}<div>Alle Zeiten vor Fahrtantritt prüfen: <a href="https://www.travelinescotland.com" target="_blank" rel="noopener">travelinescotland.com</a></div></div></details>`;
   content.innerHTML = h;
   content.scrollTop = 0;
   renderOfflineRow();
@@ -490,24 +655,45 @@ function transitCard(n) {
       <div class="s">${esc(n.stop.name)} · ≈ ${fmt(Math.round(n.d * 10) / 10)} km Luftlinie</div>
     </div>
     <div class="meta">${esc(ln.days)}</div>
-    <div class="chev">›</div>
+    ${icon('chevRight', 'chev')}
   </div>`;
 }
 
+function starsRow(id) {
+  const mine = RATINGS.get(id) || 0;
+  let btns = '';
+  for (let i = 1; i <= 5; i++) {
+    btns += `<button class="starbtn${i <= mine ? ' on' : ''}" onclick="setRating('${id}',${i})" aria-label="${i} Sterne">${icon(i <= mine ? 'starFill' : 'star')}</button>`;
+  }
+  return `<div class="starsrow" id="starsRow"><span>${esc(GATE.name || 'Deine')} Wertung</span>${btns}</div>`;
+}
+window.setRating = (id, n) => {
+  RATINGS.set(id, RATINGS.get(id) === n ? 0 : n);
+  const el = document.getElementById('starsRow');
+  if (el) el.outerHTML = starsRow(id);
+};
+
+let lastView = '';
 function showStage(id) {
   const entry = stageLayers[id];
   if (!entry) return;
   const s = entry.stage, key = entry.trailKey, t = TRAILS[key];
   setSnap('half');
-  focusStage(id);
+  focusStage(id, lastView === 'stage');
+  lastView = 'stage';
   const start = s.coords[0], end = s.coords[s.coords.length - 1];
   const atStart = nearbyLines(start), atEnd = nearbyLines(end);
   const notes = (TRANSIT.stageNotes || {})[id] || [];
   const prev = t.stages[entry.index - 1], next = t.stages[entry.index + 1];
+  const info = (window.STAGE_INFO || {})[id] || {};
+  const camps = (window.CAMPS || []).filter(c => c.stage === id);
 
   let h = `<div class="topline">
-      <button class="backbtn" onclick="showOverview()">←</button>
+      <button class="backbtn" onclick="showOverview()" title="Zur Übersicht">${icon('arrowLeft')}</button>
       <span class="chip" style="background:${TRAIL_COLORS[key]}1a;color:${TRAIL_COLORS[key]}">${esc(s.name.includes('(') ? s.name.split('(')[0].trim() : s.name)}</span>
+      <span class="spacer"></span>
+      <button class="backbtn" ${prev ? `onclick="showStage('${prev.id}')" title="Vorherige Etappe"` : 'disabled'}>${icon('chevLeft')}</button>
+      <button class="backbtn" ${next ? `onclick="showStage('${next.id}')" title="Nächste Etappe"` : 'disabled'}>${icon('chevRight')}</button>
     </div>
     <h1>${esc(s.from)} → ${esc(s.to)}</h1>
     <div class="statgrid">
@@ -515,19 +701,31 @@ function showStage(id) {
       <div><b>↑ ${s.up} m</b><span>Aufstieg</span></div>
       <div><b>${esc(t.title)}</b><span>Trail</span></div>
     </div>`;
-  if (notes.length) h += notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
+  if (info.text) h += `<p class="stagetext">${esc(info.text)}</p>`;
+  if (info.photos && info.photos.length) {
+    h += `<div class="photos">` + info.photos.map(p =>
+      `<figure><img loading="lazy" src="${p.url}" alt=""><figcaption>${esc(p.credit || '')}</figcaption></figure>`).join('') + `</div>`;
+  }
+  h += starsRow(id);
+  if (notes.length) h += notes.map(n => `<div class="note">${icon('info')}<div>${esc(n)}</div></div>`).join('');
+  if (camps.length) {
+    h += `<h2>Zeltplatz-Kandidaten</h2>` + camps.map(c => `
+      <div class="row" onclick="zoomCamp(${c.lat},${c.lng})">
+        <div class="kicon" style="background:#4b6b52">${icon('tent')}</div>
+        <div class="grow"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.text)}</div></div>
+      </div>`).join('');
+  }
   h += `<h2>Anbindung am Start · ${esc(s.from)}</h2>`;
-  h += atStart.length ? atStart.map(transitCard).join('') : `<div class="note">Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div>`;
+  h += atStart.length ? atStart.map(transitCard).join('') : `<div class="note">${icon('info')}<div>Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div></div>`;
   h += `<h2>Anbindung am Ziel · ${esc(s.to)}</h2>`;
-  h += atEnd.length ? atEnd.map(transitCard).join('') : `<div class="note">Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div>`;
-  h += `<div class="navbtns">
-      <button ${prev ? `onclick="showStage('${prev.id}')"` : 'disabled'}>‹ ${prev ? esc(prev.from) : '–'}</button>
-      <button ${next ? `onclick="showStage('${next.id}')"` : 'disabled'}>${next ? esc(next.to) : '–'} ›</button>
-    </div>`;
+  h += atEnd.length ? atEnd.map(transitCard).join('') : `<div class="note">${icon('info')}<div>Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div></div>`;
   content.innerHTML = h;
   content.scrollTop = 0;
-  setSnap('half');
 }
+window.zoomCamp = (lat, lng) => {
+  map.stop();
+  map.flyTo([lat, lng], 14, { duration: 0.7 });
+};
 
 function showLine(id) {
   const g = lineLayers[id];
@@ -535,14 +733,17 @@ function showLine(id) {
   const ln = g.data;
   setSnap('half');
   focusLine(id);
+  lastView = 'line';
   let h = `<div class="topline">
-      <button class="backbtn" onclick="showOverview()">←</button>
-      <span class="kicon" style="background:${ln.color};width:26px;height:26px;font-size:13px">${KIND_ICON[ln.kind]}</span>
+      <button class="backbtn" onclick="showOverview()" title="Zur Übersicht">${icon('arrowLeft')}</button>
+      <span class="kicon" style="background:${ln.color};width:26px;height:26px">${KIND_ICON[ln.kind]}</span>
       <span class="chip days">${esc(ln.days)}</span>
+      <span class="spacer"></span>
+      ${ln.check ? `<a class="checklink" href="${ln.check.url}" target="_blank" rel="noopener">${icon('link')} ${esc(ln.check.label)}</a>` : ''}
     </div>
     <h1>${esc(ln.name)}</h1>
     <p class="sub">${esc(ln.sub)}</p>`;
-  if (ln.warns) h += ln.warns.map(w => `<div class="note warn">${esc(w)}</div>`).join('');
+  if (ln.warns) h += ln.warns.map(w => `<div class="note warn">${icon('warn')}<div>${esc(w)}</div></div>`).join('');
   for (const tb of (ln.tables || [])) {
     h += `<div class="tt-title">${esc(tb.title)}</div><table class="tt">`;
     if (tb.head && tb.head.some(x => x)) {
@@ -553,11 +754,11 @@ function showLine(id) {
     if (tb.note) h += `<div class="tt-note">${esc(tb.note)}</div>`;
   }
   if (ln.notes && ln.notes.length) {
-    h += `<h2>Hinweise</h2>` + ln.notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
+    h += `<h2>Hinweise</h2>` + ln.notes.map(n => `<div class="note">${icon('info')}<div>${esc(n)}</div></div>`).join('');
   }
   if (ln.phones) {
     h += `<h2>Telefon</h2>` + ln.phones.map(p =>
-      `<a class="telbtn" href="tel:${p.tel.replace(/\s/g, '')}">📞 ${esc(p.label)}: ${esc(p.tel)}</a>`).join('');
+      `<a class="telbtn" href="tel:${p.tel.replace(/\s/g, '')}">${icon('phone')} ${esc(p.label)}: ${esc(p.tel)}</a>`).join('');
   }
   h += `<h2>Halte</h2>` + ln.stops.map(s => `
     <div class="row" style="cursor:default">
@@ -576,6 +777,53 @@ function fitAll() {
   fitWithSheet(b);
 }
 
+/* ================= Zugang & Bewertungen ================= */
+const GATE = {
+  hash: '5a76b698f825ff16802916196a8d4e8be15107c718287cddc6a28d214e3b4797',
+  name: localStorage.getItem('gate.name') || ''
+};
+const RATINGS = {
+  data: JSON.parse(localStorage.getItem('ratings.v1') || '{}'),
+  get(id) { return this.data[id] || 0; },
+  set(id, n) {
+    if (n) this.data[id] = n; else delete this.data[id];
+    localStorage.setItem('ratings.v1', JSON.stringify(this.data));
+  }
+};
+async function sha256hex(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+(function initGate() {
+  const gate = document.getElementById('gate');
+  // file://- bzw. Dev-Kontext ohne WebCrypto: Gate überspringen
+  if (!window.crypto || !crypto.subtle) { gate.remove(); return; }
+  if (localStorage.getItem('gate.ok') === GATE.hash && GATE.name) { gate.remove(); return; }
+  gate.hidden = false;
+  const namesBox = document.getElementById('gateNames');
+  let sel = GATE.name;
+  const renderNames = () => {
+    namesBox.innerHTML = ['Klara', 'Simi', 'Zacha'].map(n =>
+      `<button class="gatename${n === sel ? ' on' : ''}" data-n="${n}">${n}</button>`).join('');
+    namesBox.querySelectorAll('.gatename').forEach(b =>
+      b.addEventListener('click', () => { sel = b.dataset.n; renderNames(); }));
+  };
+  renderNames();
+  const go = async () => {
+    const err = document.getElementById('gateErr');
+    if (!sel) { err.textContent = 'Bitte Namen auswählen.'; return; }
+    const pw = document.getElementById('gatePw').value.trim();
+    if (await sha256hex(pw) !== GATE.hash) { err.textContent = 'Falsches Passwort.'; return; }
+    localStorage.setItem('gate.ok', GATE.hash);
+    localStorage.setItem('gate.name', sel);
+    GATE.name = sel;
+    gate.remove();
+    showOverview();
+  };
+  document.getElementById('gateGo').addEventListener('click', go);
+  document.getElementById('gatePw').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+})();
+
 /* ================= Offline-Paket & App-Updates ================= */
 const OFF = { state: 'checking', pct: 0, meta: null, size: 0, autoTried: false, err: null };
 const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -585,24 +833,24 @@ const fmtMb = b => Math.round(b / 1048576) + ' MB';
 function offlineHtml() {
   let inner = '';
   if (OFF.state === 'unsupported') {
-    inner = `<div class="note">Offline-Speicher hier nicht verfügbar (Datei-/Inkognito-Modus?).</div>`;
+    inner = `<div class="offok muted">${icon('info')} Offline-Speicher hier nicht verfügbar</div>`;
   } else if (OFF.state === 'checking') {
-    inner = `<div class="note">Offline-Karte: prüfe Speicher …</div>`;
+    inner = `<div class="offok muted">${icon('download')} Offline-Karte: prüfe Speicher …</div>`;
   } else if (OFF.state === 'ok') {
-    inner = `<div class="note">✅ Offline-Karte geladen (${fmtMb(OFF.size)}) – Etappen &amp; Fahrpläne funktionieren ohne Netz.</div>`;
+    inner = `<div class="offok">${icon('check')} Offline bereit · ${fmtMb(OFF.size)}</div>`;
   } else if (OFF.state === 'loading') {
-    inner = `<div class="note">⬇️ Offline-Karte wird geladen … ${OFF.pct} %
-      <div class="progress"><i style="width:${OFF.pct}%"></i></div></div>`;
+    inner = `<div class="note">${icon('download')}<div>Offline-Karte wird geladen … ${OFF.pct} %
+      <div class="progress"><i style="width:${OFF.pct}%"></i></div></div></div>`;
   } else if (OFF.state === 'outdated') {
-    inner = `<div class="note warn">Offline-Karte veraltet oder unvollständig (${fmtMb(OFF.size)}).
-      <br><button class="offbtn" onclick="downloadPkg()">Jetzt aktualisieren (${OFF.meta ? fmtMb(OFF.meta.size) : '~92 MB'})</button></div>`;
+    inner = `<div class="note warn">${icon('warn')}<div>Offline-Karte veraltet oder unvollständig (${fmtMb(OFF.size)}).
+      <br><button class="offbtn" onclick="downloadPkg()">Jetzt aktualisieren (${OFF.meta ? fmtMb(OFF.meta.size) : '~92 MB'})</button></div></div>`;
   } else {
-    inner = `<div class="note warn">⚠️ Offline-Karte noch nicht geladen – ohne Netz gibt es dann keine Basiskarte!
+    inner = `<div class="note warn">${icon('warn')}<div>Offline-Karte noch nicht geladen – ohne Netz gibt es dann keine Basiskarte!
       ${OFF.err ? '<br>Letzter Versuch: ' + esc(OFF.err) : ''}
-      <br><button class="offbtn" onclick="downloadPkg()">Jetzt laden (${OFF.meta ? fmtMb(OFF.meta.size) : '~92 MB'})</button></div>`;
+      <br><button class="offbtn" onclick="downloadPkg()">Jetzt laden (${OFF.meta ? fmtMb(OFF.meta.size) : '~92 MB'})</button></div></div>`;
   }
   if (isIos && !isStandalone) {
-    inner += `<div class="note">📲 Tipp: In Safari <b>Teilen → „Zum Home-Bildschirm“</b> – erst dann ist der Offline-Speicher dauerhaft geschützt.</div>`;
+    inner += `<div class="offok muted">${icon('install')} Tipp: Teilen → „Zum Home-Bildschirm“ installieren</div>`;
   }
   return inner;
 }
@@ -682,6 +930,24 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
 }
 window.addEventListener('online', () => { if (OFF.state === 'missing') offlineCheck(); });
+
+/* Etappen-Fotos in den Gerätecache vorladen (für offline) */
+async function prefetchPhotos() {
+  if (!('caches' in window) || !navigator.onLine || !window.STAGE_INFO) return;
+  try {
+    const c = await caches.open('photos-v1');
+    for (const k in STAGE_INFO) {
+      for (const p of (STAGE_INFO[k].photos || [])) {
+        if (await c.match(p.url)) continue;
+        try {
+          const r = await fetch(p.url, { mode: 'no-cors' });
+          if (r && (r.ok || r.type === 'opaque')) await c.put(p.url, r);
+        } catch (e) { /* einzelnes Foto egal */ }
+      }
+    }
+  } catch (e) { /* Cache nicht verfügbar */ }
+}
+setTimeout(prefetchPhotos, 4000);
 
 showOverview();
 fitAll();
