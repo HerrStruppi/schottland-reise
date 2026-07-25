@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="0" fill="#20313b"/>
+  <!-- Berge -->
+  <path d="M40 356 L150 200 L215 285 L300 150 L400 290 L472 356 Z" fill="#39505e"/>
+  <path d="M300 150 L400 290 L340 290 Z" fill="#4a6273"/>
+  <circle cx="300" cy="150" r="0" fill="none"/>
+  <!-- Schnee/Licht auf Gipfel -->
+  <path d="M300 150 L330 195 L312 190 L296 205 L282 178 Z" fill="#e8eef2"/>
+  <!-- Trails -->
+  <path d="M60 430 C150 380 190 440 260 400 C330 360 360 420 452 370"
+        fill="none" stroke="#4caf50" stroke-width="26" stroke-linecap="round"/>
+  <path d="M60 470 C160 430 210 480 290 445 C360 415 400 460 452 420"
+        fill="none" stroke="#ff7043" stroke-width="26" stroke-linecap="round" stroke-dasharray="2 44"/>
+</svg>

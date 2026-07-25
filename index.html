@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#20313b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<title>Highlands 2026 – Trail &amp; Transport</title>
+<link rel="stylesheet" href="vendor/leaflet.min.css">
+<style>
+  :root {
+    --ink: #202124;
+    --muted: #5f6368;
+    --line: #e8eaed;
+    --whw: #2e7d32;
+    --cwt: #d84315;
+    --warn: #c5221f;
+    --sheet-r: 16px;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; overscroll-behavior: none; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); font-size: 15px;
+  }
+  #map { position: fixed; inset: 0; }
+
+  /* ---------- schwebende Bedienelemente ---------- */
+  #brand {
+    position: fixed; top: max(10px, env(safe-area-inset-top)); left: 10px; z-index: 1100;
+    background: #fff; border-radius: 24px; padding: 8px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25); cursor: pointer;
+    display: flex; align-items: center; gap: 8px; max-width: 70vw;
+  }
+  #brand b { font-size: 14px; white-space: nowrap; }
+  #brand span { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mapbtns {
+    position: fixed; right: 10px; top: max(10px, env(safe-area-inset-top)); z-index: 1100;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .mapbtn {
+    width: 40px; height: 40px; border-radius: 50%; border: none; background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25); font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; color: var(--ink);
+  }
+  .mapbtn:active { background: #f1f3f4; }
+
+  /* ---------- Bottom Sheet ---------- */
+  #sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; top: 0; z-index: 1200;
+    transform: translateY(calc(100% - 176px - var(--safe-b)));
+    transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+    pointer-events: none;
+  }
+  #sheet.dragging { transition: none; }
+  @media (min-width: 700px) { #sheet { max-width: 440px; } }
+  #sheet .card {
+    position: absolute; inset: 0; background: #fff; pointer-events: auto;
+    border-radius: var(--sheet-r) var(--sheet-r) 0 0;
+    box-shadow: 0 -1px 12px rgba(0,0,0,0.28);
+    display: flex; flex-direction: column;
+  }
+  #grip { padding: 8px 0 4px; flex: none; cursor: grab; touch-action: none; }
+  #grip::before {
+    content: ''; display: block; width: 38px; height: 4px; border-radius: 2px;
+    background: #dadce0; margin: 0 auto;
+  }
+  #sheetContent {
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 2px 16px calc(24px + var(--safe-b));
+  }
+
+  h1 { font-size: 19px; margin: 4px 0 2px; font-weight: 600; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--muted); margin: 18px 0 6px; font-weight: 600;
+  }
+  .topline { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .backbtn {
+    flex: none; width: 34px; height: 34px; border-radius: 50%; border: none;
+    background: #f1f3f4; font-size: 17px; cursor: pointer; color: var(--ink);
+  }
+  .chip {
+    display: inline-block; font-size: 11.5px; padding: 2px 9px; border-radius: 999px;
+    background: #f1f3f4; color: var(--muted); font-weight: 500;
+  }
+  .chip.days { background: #e6f4ea; color: #137333; }
+  .chip.warnc { background: #fce8e6; color: var(--warn); }
+
+  .row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 4px;
+    border-bottom: 1px solid var(--line); cursor: pointer;
+  }
+  .row:active { background: #f8f9fa; }
+  .row .num {
+    flex: none; width: 30px; height: 30px; border-radius: 50%; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; font-weight: 600;
+  }
+  .row .grow { flex: 1; min-width: 0; }
+  .row .t { font-size: 14.5px; font-weight: 500; }
+  .row .s { font-size: 12.5px; color: var(--muted); }
+  .row .meta { flex: none; text-align: right; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .row .chev { flex: none; color: #bdc1c6; font-size: 18px; }
+
+  .kicon {
+    flex: none; width: 32px; height: 32px; border-radius: 8px; font-size: 16px;
+    display: flex; align-items: center; justify-content: center; color: #fff;
+  }
+  .statgrid { display: flex; gap: 18px; margin: 10px 0 4px; }
+  .statgrid div b { display: block; font-size: 17px; font-weight: 600; }
+  .statgrid div span { font-size: 11.5px; color: var(--muted); }
+
+  .note {
+    font-size: 13px; line-height: 1.5; background: #f8f9fa; border-radius: 10px;
+    padding: 9px 12px; margin: 6px 0;
+  }
+  .note.warn { background: #fce8e6; color: #7c1f1c; }
+  .note a { color: inherit; }
+
+  table.tt { border-collapse: collapse; width: 100%; margin: 4px 0 2px; font-size: 13.5px; }
+  table.tt th {
+    text-align: right; font-size: 11.5px; color: var(--muted); font-weight: 600;
+    padding: 4px 0 4px 10px; border-bottom: 1px solid var(--line);
+  }
+  table.tt th:first-child { text-align: left; padding-left: 0; }
+  table.tt td { padding: 6px 0 6px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  table.tt td:first-child { text-align: left; padding-left: 0; white-space: normal; color: var(--ink); }
+  table.tt tr:last-child td { border-bottom: none; }
+  .tt-title { font-size: 13px; font-weight: 600; margin: 14px 0 2px; }
+  .tt-note { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
+
+  .navbtns { display: flex; gap: 10px; margin-top: 16px; }
+  .navbtns button {
+    flex: 1; padding: 10px; border-radius: 24px; border: 1px solid var(--line);
+    background: #fff; font-size: 13.5px; cursor: pointer; color: var(--ink);
+  }
+  .navbtns button:disabled { opacity: 0.35; }
+
+  .telbtn {
+    display: inline-block; margin: 4px 8px 4px 0; padding: 8px 14px; border-radius: 24px;
+    background: #e8f0fe; color: #1a56ab; text-decoration: none; font-size: 13.5px; font-weight: 500;
+  }
+
+  /* ---------- Karten-Labels ---------- */
+  .leaflet-tooltip.wpt-label, .leaflet-tooltip.stop-label {
+    background: rgba(255,255,255,0.92); border: none; border-radius: 6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3); padding: 1px 6px;
+    font-size: 11px; font-weight: 600; color: var(--ink);
+  }
+  .leaflet-tooltip.stop-label { font-weight: 500; font-size: 10.5px; color: #3c4043; }
+  .leaflet-tooltip-top.wpt-label::before, .leaflet-tooltip-top.stop-label::before,
+  .leaflet-tooltip-bottom.wpt-label::before, .leaflet-tooltip-bottom.stop-label::before,
+  .leaflet-tooltip-left.wpt-label::before, .leaflet-tooltip-left.stop-label::before,
+  .leaflet-tooltip-right.wpt-label::before, .leaflet-tooltip-right.stop-label::before { display: none; }
+  body:not(.show-wpt) .wpt-label { display: none; }
+  body:not(.show-stops) .stop-label { display: none; }
+  body.line-focus .stop-label { display: block; }
+
+  .linepill {
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    background: #fff; border-radius: 10px; padding: 2px 7px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.35); font-size: 11px; font-weight: 600;
+    color: #3c4043; cursor: pointer; border-left: 4px solid #999;
+  }
+  body:not(.show-transit-lbl) .linepill.minor { display: none; }
+
+  .leaflet-control-attribution { font-size: 9px; }
+
+  /* ---------- Offline & Updates ---------- */
+  .progress { height: 6px; border-radius: 3px; background: #e8eaed; overflow: hidden; margin: 8px 0 4px; }
+  .progress i { display: block; height: 100%; background: #1a73e8; border-radius: 3px; transition: width 0.3s; }
+  .offbtn {
+    display: inline-block; margin-top: 6px; padding: 8px 16px; border-radius: 24px; border: none;
+    background: #1a73e8; color: #fff; font-size: 13.5px; font-weight: 500; cursor: pointer;
+  }
+  #toast {
+    position: fixed; left: 50%; bottom: calc(30px + var(--safe-b)); transform: translateX(-50%);
+    background: #202124; color: #fff; padding: 10px 18px; border-radius: 24px;
+    font-size: 13.5px; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4); white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="brand" title="Zur Übersicht">
+  <b>Highlands 2026</b><span>WHW · Cape Wrath Trail</span>
+</div>
+<div class="mapbtns">
+  <button class="mapbtn" id="baseToggle" title="Karte/Gelände">⛰</button>
+  <button class="mapbtn" id="locateBtn" title="Mein Standort">◎</button>
+</div>
+
+<div id="sheet">
+  <div class="card">
+    <div id="grip"></div>
+    <div id="sheetContent"></div>
+  </div>
+</div>
+
+<script src="trails-data.js"></script>
+<script src="transit-data.js"></script>
+<script src="vendor/leaflet.min.js"></script>
+<script src="vendor/protomaps-leaflet.js"></script>
+<script>
+'use strict';
+const TRAILS = window.TRAILS || {};
+const TRANSIT = window.TRANSIT || { lines: [], stageNotes: {}, generalWarns: [] };
+const TRAIL_COLORS = { whw: getCss('--whw'), cwt: getCss('--cwt') };
+const KIND_ICON = { zug: '🚂', bus: '🚌', faehre: '⛴' };
+function getCss(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+
+/* ================= Karte ================= */
+const map = L.map('map', { zoomControl: false, attributionControl: true })
+  .setView([57.3, -4.9], 7);
+
+/* Basiskarte: Vektor (offline-fähig, via Service Worker aus dem PMTiles-Paket),
+   darunter Online-OSM als Fallback für Bereiche außerhalb des Pakets /
+   solange der Service Worker noch nicht aktiv ist. */
+const rasterFallback = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, zIndex: 1, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+const vtBase = location.origin + location.pathname.replace(/[^/]*$/, '');
+const vectorSupported = 'serviceWorker' in navigator && location.protocol !== 'file:';
+let vector = null;
+function buildVector() {
+  const v = protomapsL.leafletLayer({
+    url: vtBase + 'vt/{z}/{x}/{y}.mvt', flavor: 'light', lang: 'de',
+    maxDataZoom: 14, maxZoom: 19,
+    attribution: '<a href="https://protomaps.com">Protomaps</a>'
+  });
+  v.setZIndex(5);
+  // Leere Kacheln (außerhalb des Offline-Pakets) transparent lassen,
+  // damit der Online-Raster-Fallback darunter sichtbar bleibt.
+  v.backgroundColor = null;
+  return v;
+}
+/* Layer neu aufbauen (die Bibliothek cached Kachel-Antworten intern –
+   nach SW-Übernahme oder Paket-Download müssen Kacheln neu geholt werden). */
+function refreshVector() {
+  if (!vectorSupported) return;
+  if (vector && map.hasLayer(vector)) map.removeLayer(vector);
+  vector = buildVector();
+  if (!topoOn) vector.addTo(map);
+}
+if (vectorSupported) {
+  vector = buildVector();
+  vector.addTo(map);
+  if (!navigator.serviceWorker.controller) {
+    navigator.serviceWorker.addEventListener('controllerchange', () => refreshVector(), { once: true });
+  }
+}
+const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+  maxZoom: 17, zIndex: 5, attribution: '© OpenStreetMap, SRTM | © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA, nur online)'
+});
+let topoOn = false;
+document.getElementById('baseToggle').addEventListener('click', () => {
+  topoOn = !topoOn;
+  if (topoOn) { if (vector && map.hasLayer(vector)) map.removeLayer(vector); topo.addTo(map); }
+  else { map.removeLayer(topo); if (vector) vector.addTo(map); }
+});
+document.getElementById('locateBtn').addEventListener('click', () => {
+  map.locate({ setView: true, maxZoom: 13 });
+});
+map.on('locationfound', e => {
+  L.circleMarker(e.latlng, { radius: 7, color: '#1a73e8', weight: 2, fillColor: '#1a73e8', fillOpacity: 0.4 }).addTo(map);
+});
+
+const fmt = n => String(n).replace('.', ',');
+
+/* ================= Trails zeichnen ================= */
+const stageLayers = {};   // id -> {line, hit, stage, trailKey}
+const allStages = [];
+for (const key of Object.keys(TRAILS)) {
+  const color = TRAIL_COLORS[key] || '#333';
+  TRAILS[key].stages.forEach((s, i) => {
+    const line = L.polyline(s.coords, { color, weight: 5, opacity: 0.9 }).addTo(map);
+    const hit = L.polyline(s.coords, { color: '#000', weight: 24, opacity: 0.001 }).addTo(map);
+    hit.on('click', ev => { L.DomEvent.stopPropagation(ev); showStage(s.id); });
+    line.on('click', ev => { L.DomEvent.stopPropagation(ev); showStage(s.id); });
+    stageLayers[s.id] = { line, hit, stage: s, trailKey: key, index: i };
+    allStages.push(s);
+  });
+
+  // Zwischenstationen: Start der ersten + Ziel jeder Etappe, mit Namen
+  const st = TRAILS[key].stages;
+  const wpts = [{ name: st[0].from, ll: st[0].coords[0], stageId: st[0].id }];
+  st.forEach(s => wpts.push({ name: s.to, ll: s.coords[s.coords.length - 1], stageId: s.id }));
+  wpts.forEach(w => {
+    const m = L.circleMarker(w.ll, {
+      radius: 5, color: '#fff', weight: 2, fillColor: color, fillOpacity: 1
+    }).addTo(map);
+    m.bindTooltip(w.name, { permanent: true, direction: 'right', offset: [7, 0], className: 'wpt-label' });
+    m.on('click', ev => { L.DomEvent.stopPropagation(ev); showStage(w.stageId); });
+  });
+}
+
+/* ================= ÖPNV zeichnen ================= */
+const lineLayers = {};    // id -> {lines:[], stops:[], pill}
+const MAJOR_LABELS = new Set(['whl', 'kyle', 'b915', 'b805', 'b961']);
+for (const ln of TRANSIT.lines) {
+  const dash = ln.kind === 'faehre' ? '3 7' : null;
+  const group = { lines: [], stops: [], pill: null, data: ln };
+  const paths = [ln.coords].concat(ln.coordsAlt ? [ln.coordsAlt] : []);
+  for (const pts of paths) {
+    const l = L.polyline(pts, { color: ln.color, weight: 2.2, opacity: 0.75, dashArray: dash }).addTo(map);
+    const hit = L.polyline(pts, { color: '#000', weight: 16, opacity: 0.001 }).addTo(map);
+    hit.on('click', ev => { L.DomEvent.stopPropagation(ev); showLine(ln.id); });
+    l.on('click', ev => { L.DomEvent.stopPropagation(ev); showLine(ln.id); });
+    group.lines.push(l, hit);
+  }
+  for (const stop of ln.stops) {
+    const m = L.circleMarker([stop.lat, stop.lng], {
+      radius: stop.hub ? 4.5 : 3.5, color: ln.color, weight: 1.6, fillColor: '#fff', fillOpacity: 1
+    }).addTo(map);
+    m.bindTooltip((KIND_ICON[ln.kind] || '') + ' ' + stop.name,
+      { permanent: true, direction: 'bottom', offset: [0, 5], className: 'stop-label' });
+    m.on('click', ev => { L.DomEvent.stopPropagation(ev); showLine(ln.id); });
+    group.stops.push(m);
+  }
+  // Linien-Beschriftung (Pill) in der Streckenmitte
+  const mid = ln.coords[Math.floor(ln.coords.length / 2)];
+  const short = ln.name.replace('Citylink ', '').replace('Westerbus ', '').replace('Bus ', '')
+    .replace('Fähre Fort William – Camusnagaul', 'Camusnagaul').replace('Fähre + Minibus Cape Wrath', 'Cape Wrath')
+    .replace(' + D&E 61', '/61').replace(' Far North', '').replace(' / 700 / 707', '');
+  const pill = L.marker(mid, {
+    icon: L.divIcon({
+      className: '',
+      html: `<span class="linepill ${MAJOR_LABELS.has(ln.id) ? '' : 'minor'}" style="border-left-color:${ln.color}">${KIND_ICON[ln.kind]} ${short}</span>`,
+      iconSize: null, iconAnchor: [0, 8]
+    }), interactive: true
+  }).addTo(map);
+  pill.on('click', ev => { L.DomEvent.stopPropagation(ev); showLine(ln.id); });
+  group.pill = pill;
+  lineLayers[ln.id] = group;
+}
+
+/* Label-Sichtbarkeit nach Zoomstufe */
+function updateLabelVisibility() {
+  const z = map.getZoom();
+  document.body.classList.toggle('show-wpt', z >= 8);
+  document.body.classList.toggle('show-stops', z >= 9);
+  document.body.classList.toggle('show-transit-lbl', z >= 8);
+}
+map.on('zoomend', updateLabelVisibility);
+updateLabelVisibility();
+
+/* ================= Auswahl-Logik ================= */
+function haversineKm(a, b) {
+  const r = Math.PI / 180, R = 6371;
+  const h = Math.sin((b[0]-a[0])*r/2)**2 + Math.cos(a[0]*r)*Math.cos(b[0]*r)*Math.sin((b[1]-a[1])*r/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function nearbyLines(pt, maxKm = 5) {
+  const res = [];
+  for (const ln of TRANSIT.lines) {
+    let best = null;
+    for (const s of ln.stops) {
+      const d = haversineKm(pt, [s.lat, s.lng]);
+      if (d <= maxKm && (!best || d < best.d)) best = { stop: s, d };
+    }
+    if (best) res.push({ line: ln, stop: best.stop, d: best.d });
+  }
+  return res.sort((a, b) => a.d - b.d).slice(0, 4);
+}
+
+function resetStyles() {
+  document.body.classList.remove('line-focus');
+  for (const id in stageLayers) stageLayers[id].line.setStyle({ opacity: 0.9, weight: 5 });
+  for (const id in lineLayers) lineLayers[id].lines.forEach((l, i) => {
+    if (i % 2 === 0) l.setStyle({ opacity: 0.75, weight: 2.2 });
+  });
+}
+
+function focusStage(id) {
+  resetStyles();
+  for (const sid in stageLayers) {
+    if (sid !== id) stageLayers[sid].line.setStyle({ opacity: 0.25 });
+  }
+  const sel = stageLayers[id];
+  sel.line.setStyle({ opacity: 1, weight: 7 });
+  fitWithSheet(sel.line.getBounds());
+}
+function focusLine(id) {
+  resetStyles();
+  document.body.classList.add('line-focus');
+  for (const sid in stageLayers) stageLayers[sid].line.setStyle({ opacity: 0.3 });
+  for (const lid in lineLayers) {
+    if (lid !== id) lineLayers[lid].lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: 0.12 }); });
+  }
+  const g = lineLayers[id];
+  g.lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: 1, weight: 4 }); });
+  const b = L.latLngBounds([]);
+  g.data.stops.forEach(s => b.extend([s.lat, s.lng]));
+  g.data.coords.forEach(c => b.extend(c));
+  fitWithSheet(b);
+}
+function fitWithSheet(bounds) {
+  map.stop();
+  map.fitBounds(bounds, { paddingTopLeft: [30, 70], paddingBottomRight: [30, sheetHeight() + 30], animate: false });
+}
+
+/* ================= Bottom Sheet ================= */
+const sheet = document.getElementById('sheet');
+const content = document.getElementById('sheetContent');
+const SNAPS = { peek: 176, half: 330, full: () => Math.round(window.innerHeight * 0.86) };
+let snap = 'peek';
+function setSnap(s) {
+  snap = s;
+  const h = typeof SNAPS[s] === 'function' ? SNAPS[s]() : SNAPS[s];
+  sheet.style.transform = `translateY(calc(100% - ${h}px - var(--safe-b)))`;
+}
+function sheetHeight() {
+  return typeof SNAPS[snap] === 'function' ? SNAPS[snap]() : SNAPS[snap];
+}
+(() => {
+  const grip = document.getElementById('grip');
+  let startY = 0, startH = 0, curH = 0;
+  grip.addEventListener('pointerdown', e => {
+    startY = e.clientY; startH = sheetHeight(); curH = startH;
+    sheet.classList.add('dragging');
+    grip.setPointerCapture(e.pointerId);
+    const move = ev => {
+      curH = Math.max(80, Math.min(SNAPS.full(), startH + (startY - ev.clientY)));
+      sheet.style.transform = `translateY(calc(100% - ${curH}px - var(--safe-b)))`;
+    };
+    const up = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', up);
+      sheet.classList.remove('dragging');
+      const targets = [['peek', SNAPS.peek], ['half', SNAPS.half], ['full', SNAPS.full()]];
+      targets.sort((a, b) => Math.abs(a[1] - curH) - Math.abs(b[1] - curH));
+      setSnap(targets[0][0]);
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', up);
+  });
+})();
+
+/* ================= Ansichten ================= */
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+function showOverview() {
+  resetStyles();
+  let h = `<h1>Highlands: Trail &amp; Transport</h1>
+    <p class="sub">West Highland Way · Cape Wrath Trail · 21.08.–01.09.2026 — Etappe oder Linie antippen</p>
+    <div id="offlineRow"></div>`;
+  for (const key of Object.keys(TRAILS)) {
+    const t = TRAILS[key];
+    const total = t.stages.reduce((a, s) => a + s.km, 0);
+    h += `<h2 style="color:${TRAIL_COLORS[key]}">${esc(t.title)} · ${Math.round(total)} km</h2>`;
+    h += t.stages.map(s => `
+      <div class="row" onclick="showStage('${s.id}')">
+        <div class="num" style="background:${TRAIL_COLORS[key]}">${s.id.split('-')[1]}</div>
+        <div class="grow"><div class="t">${esc(s.from)} → ${esc(s.to)}</div></div>
+        <div class="meta">${fmt(s.km)} km<br>↑ ${s.up} m</div>
+        <div class="chev">›</div>
+      </div>`).join('');
+  }
+  h += `<h2>Bahn &amp; Bus</h2>`;
+  h += TRANSIT.lines.map(ln => `
+    <div class="row" onclick="showLine('${ln.id}')">
+      <div class="kicon" style="background:${ln.color}">${KIND_ICON[ln.kind]}</div>
+      <div class="grow"><div class="t">${esc(ln.name)}</div><div class="s">${esc(ln.sub)}</div></div>
+      <div class="meta">${esc(ln.days)}</div>
+      <div class="chev">›</div>
+    </div>`).join('');
+  h += `<h2>Wichtig</h2>` + TRANSIT.generalWarns.map(w => `<div class="note warn">${esc(w)}</div>`).join('');
+  content.innerHTML = h;
+  content.scrollTop = 0;
+  renderOfflineRow();
+  setSnap('peek');
+}
+
+function transitCard(n) {
+  const ln = n.line;
+  return `<div class="row" onclick="showLine('${ln.id}')">
+    <div class="kicon" style="background:${ln.color}">${KIND_ICON[ln.kind]}</div>
+    <div class="grow">
+      <div class="t">${esc(ln.name)}</div>
+      <div class="s">${esc(n.stop.name)} · ≈ ${fmt(Math.round(n.d * 10) / 10)} km Luftlinie</div>
+    </div>
+    <div class="meta">${esc(ln.days)}</div>
+    <div class="chev">›</div>
+  </div>`;
+}
+
+function showStage(id) {
+  const entry = stageLayers[id];
+  if (!entry) return;
+  const s = entry.stage, key = entry.trailKey, t = TRAILS[key];
+  setSnap('half');
+  focusStage(id);
+  const start = s.coords[0], end = s.coords[s.coords.length - 1];
+  const atStart = nearbyLines(start), atEnd = nearbyLines(end);
+  const notes = (TRANSIT.stageNotes || {})[id] || [];
+  const prev = t.stages[entry.index - 1], next = t.stages[entry.index + 1];
+
+  let h = `<div class="topline">
+      <button class="backbtn" onclick="showOverview()">←</button>
+      <span class="chip" style="background:${TRAIL_COLORS[key]}1a;color:${TRAIL_COLORS[key]}">${esc(s.name.includes('(') ? s.name.split('(')[0].trim() : s.name)}</span>
+    </div>
+    <h1>${esc(s.from)} → ${esc(s.to)}</h1>
+    <div class="statgrid">
+      <div><b>${fmt(s.km)} km</b><span>Distanz</span></div>
+      <div><b>↑ ${s.up} m</b><span>Aufstieg</span></div>
+      <div><b>${esc(t.title)}</b><span>Trail</span></div>
+    </div>`;
+  if (notes.length) h += notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
+  h += `<h2>Anbindung am Start · ${esc(s.from)}</h2>`;
+  h += atStart.length ? atStart.map(transitCard).join('') : `<div class="note">Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div>`;
+  h += `<h2>Anbindung am Ziel · ${esc(s.to)}</h2>`;
+  h += atEnd.length ? atEnd.map(transitCard).join('') : `<div class="note">Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div>`;
+  h += `<div class="navbtns">
+      <button ${prev ? `onclick="showStage('${prev.id}')"` : 'disabled'}>‹ ${prev ? esc(prev.from) : '–'}</button>
+      <button ${next ? `onclick="showStage('${next.id}')"` : 'disabled'}>${next ? esc(next.to) : '–'} ›</button>
+    </div>`;
+  content.innerHTML = h;
+  content.scrollTop = 0;
+  setSnap('half');
+}
+
+function showLine(id) {
+  const g = lineLayers[id];
+  if (!g) return;
+  const ln = g.data;
+  setSnap('half');
+  focusLine(id);
+  let h = `<div class="topline">
+      <button class="backbtn" onclick="showOverview()">←</button>
+      <span class="kicon" style="background:${ln.color};width:26px;height:26px;font-size:13px">${KIND_ICON[ln.kind]}</span>
+      <span class="chip days">${esc(ln.days)}</span>
+    </div>
+    <h1>${esc(ln.name)}</h1>
+    <p class="sub">${esc(ln.sub)}</p>`;
+  if (ln.warns) h += ln.warns.map(w => `<div class="note warn">${esc(w)}</div>`).join('');
+  for (const tb of (ln.tables || [])) {
+    h += `<div class="tt-title">${esc(tb.title)}</div><table class="tt">`;
+    if (tb.head && tb.head.some(x => x)) {
+      h += '<tr><th></th>' + tb.head.map(x => `<th>${esc(x)}</th>`).join('') + '</tr>';
+    }
+    h += tb.rows.map(r => '<tr>' + r.map((c, i) => i === 0 ? `<td>${esc(c)}</td>` : `<td>${esc(c)}</td>`).join('') + '</tr>').join('');
+    h += '</table>';
+    if (tb.note) h += `<div class="tt-note">${esc(tb.note)}</div>`;
+  }
+  if (ln.notes && ln.notes.length) {
+    h += `<h2>Hinweise</h2>` + ln.notes.map(n => `<div class="note">${esc(n)}</div>`).join('');
+  }
+  if (ln.phones) {
+    h += `<h2>Telefon</h2>` + ln.phones.map(p =>
+      `<a class="telbtn" href="tel:${p.tel.replace(/\s/g, '')}">📞 ${esc(p.label)}: ${esc(p.tel)}</a>`).join('');
+  }
+  h += `<h2>Halte</h2>` + ln.stops.map(s => `
+    <div class="row" style="cursor:default">
+      <div class="num" style="background:#fff;border:2.5px solid ${ln.color};color:${ln.color};width:14px;height:14px;margin:0 8px"></div>
+      <div class="grow"><div class="t" style="font-weight:400">${esc(s.name)}</div></div>
+    </div>`).join('');
+  content.innerHTML = h;
+  content.scrollTop = 0;
+  setSnap('half');
+}
+
+document.getElementById('brand').addEventListener('click', () => { showOverview(); fitAll(); });
+function fitAll() {
+  const b = L.latLngBounds([]);
+  for (const id in stageLayers) b.extend(stageLayers[id].line.getBounds());
+  fitWithSheet(b);
+}
+
+/* ================= Offline-Paket & App-Updates ================= */
+const OFF = { state: 'checking', pct: 0, meta: null, size: 0, autoTried: false, err: null };
+const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const fmtMb = b => Math.round(b / 1048576) + ' MB';
+
+function offlineHtml() {
+  let inner = '';
+  if (OFF.state === 'unsupported') {
+    inner = `<div class="note">Offline-Speicher hier nicht verfügbar (Datei-/Inkognito-Modus?).</div>`;
+  } else if (OFF.state === 'checking') {
+    inner = `<div class="note">Offline-Karte: prüfe Speicher …</div>`;
+  } else if (OFF.state === 'ok') {
+    inner = `<div class="note">✅ Offline-Karte geladen (${fmtMb(OFF.size)}) – Etappen &amp; Fahrpläne funktionieren ohne Netz.</div>`;
+  } else if (OFF.state === 'loading') {
+    inner = `<div class="note">⬇️ Offline-Karte wird geladen … ${OFF.pct} %
+      <div class="progress"><i style="width:${OFF.pct}%"></i></div></div>`;
+  } else if (OFF.state === 'outdated') {
+    inner = `<div class="note warn">Offline-Karte veraltet oder unvollständig (${fmtMb(OFF.size)}).
+      <br><button class="offbtn" onclick="downloadPkg()">Jetzt aktualisieren (${OFF.meta ? fmtMb(OFF.meta.size) : '~92 MB'})</button></div>`;
+  } else {
+    inner = `<div class="note warn">⚠️ Offline-Karte noch nicht geladen – ohne Netz gibt es dann keine Basiskarte!
+      ${OFF.err ? '<br>Letzter Versuch: ' + esc(OFF.err) : ''}
+      <br><button class="offbtn" onclick="downloadPkg()">Jetzt laden (${OFF.meta ? fmtMb(OFF.meta.size) : '~92 MB'})</button></div>`;
+  }
+  if (isIos && !isStandalone) {
+    inner += `<div class="note">📲 Tipp: In Safari <b>Teilen → „Zum Home-Bildschirm“</b> – erst dann ist der Offline-Speicher dauerhaft geschützt.</div>`;
+  }
+  return inner;
+}
+function renderOfflineRow() {
+  const el = document.getElementById('offlineRow');
+  if (el) el.innerHTML = offlineHtml();
+}
+
+async function offlineCheck() {
+  if (!('caches' in window) || location.protocol === 'file:') {
+    OFF.state = 'unsupported'; renderOfflineRow(); return;
+  }
+  try { OFF.meta = await (await fetch('tiles-meta.json', { cache: 'no-store' })).json(); }
+  catch (e) { try { OFF.meta = await (await fetch('tiles-meta.json')).json(); } catch (e2) {} }
+  try {
+    const c = await caches.open('tilepkg-v1');
+    const r = await c.match('pkg.pmtiles');
+    if (!r) OFF.state = 'missing';
+    else {
+      const b = await r.blob();
+      OFF.size = b.size;
+      OFF.state = (!OFF.meta || b.size === OFF.meta.size) ? 'ok' : 'outdated';
+    }
+  } catch (e) { OFF.state = 'missing'; }
+  renderOfflineRow();
+  if (OFF.state === 'missing' && navigator.onLine && OFF.meta && !OFF.autoTried) {
+    OFF.autoTried = true;
+    downloadPkg();
+  }
+}
+
+async function downloadPkg() {
+  if (!OFF.meta || OFF.state === 'loading') return;
+  OFF.state = 'loading'; OFF.pct = 0; OFF.err = null; renderOfflineRow();
+  try {
+    const resp = await fetch(OFF.meta.file + '?v=' + encodeURIComponent(OFF.meta.build), { cache: 'no-store' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const total = +resp.headers.get('content-length') || OFF.meta.size;
+    const reader = resp.body.getReader();
+    const chunks = []; let got = 0, lastPct = -1;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      const pct = Math.min(99, Math.floor(got / total * 100));
+      if (pct !== lastPct) { lastPct = pct; OFF.pct = pct; renderOfflineRow(); }
+    }
+    const blob = new Blob(chunks, { type: 'application/octet-stream' });
+    if (OFF.meta.size && blob.size !== OFF.meta.size) throw new Error('unvollständig (' + fmtMb(blob.size) + ')');
+    const c = await caches.open('tilepkg-v1');
+    await c.put('pkg.pmtiles', new Response(blob, { headers: { 'Content-Type': 'application/octet-stream' } }));
+    OFF.size = blob.size; OFF.state = 'ok'; renderOfflineRow();
+    navigator.serviceWorker?.controller?.postMessage({ type: 'pkg-updated' });
+    refreshVector();
+    toast('Offline-Karte gespeichert ✓');
+  } catch (e) {
+    OFF.err = e.message; OFF.state = 'missing'; renderOfflineRow();
+  }
+}
+
+function toast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.classList.add('show'));
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  const hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.addEventListener('message', e => {
+    const d = e.data || {};
+    if (d.type === 'sw-updated' && hadController) toast('App aktualisiert ✓');
+  });
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+}
+window.addEventListener('online', () => { if (OFF.state === 'missing') offlineCheck(); });
+
+showOverview();
+fitAll();
+offlineCheck();
+</script>
+</body>
+</html>
