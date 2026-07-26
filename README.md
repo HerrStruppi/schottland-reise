@@ -35,7 +35,8 @@ Karte ab Zoom 10 + im Etappen-Sheet), Linien-Modus mit Fahrplantabellen und
     bbox −6.05…−3.8 / 55.75…58.8, z0–14). Die Seite rendert sie mit
     protomaps-leaflet über den virtuellen Endpoint `vt/{z}/{x}/{y}.mvt`,
     den der Service Worker bedient: bevorzugt aus dem lokal gespeicherten
-    Paket (Cache Storage), sonst per HTTP-Range-Request vom Server.
+    Paket (**IndexedDB** – iOS leert Cache Storage beim App-Schließen,
+    IndexedDB bleibt), sonst per HTTP-Range-Request vom Server.
   - Außerhalb des Pakets: normale Online-OSM-Kacheln als Fallback-Ebene
     (leere Vektor-Kacheln bleiben transparent). OpenTopoMap-Umschalter ist
     online-only.
@@ -109,7 +110,6 @@ prüfen (Bauarbeiten, kurzfristige Änderungen).
 ## Ideen für die Weiterarbeit
 
 - Höhenprofile aus den GPX-Dateien im Etappen-Sheet anzeigen
-- Etappen mit Unterkünften/Resupply-Punkten anreichern
+- Vote-Sync zwischen den drei Geräten (z. B. privates Gist; Datenstruktur ist vorbereitet)
 - Tagesplan-Ansicht: Datum wählen → passende Abfahrten hervorheben
-- GitHub Pages aktivieren (`git init` + Repo fehlt noch)
-- Offline-Kacheln / PWA für unterwegs (im Nordwesten kaum Netz!)
+- Unterkünfte (B&Bs/Hostels) als eigene Ebene ergänzen
