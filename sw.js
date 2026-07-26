@@ -37,6 +37,35 @@ self.addEventListener('activate', e => {
   })());
 });
 
+/* ---------- Paket-Speicher: IndexedDB ----------
+   Wichtig für iOS: Cache Storage gilt als "purgeable" und wird bei
+   Speicherdruck/App-Schließen geleert – IndexedDB-Daten bleiben erhalten. */
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const q = indexedDB.open('highlands', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('kv');
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const r = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbSet(key, val) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(val, key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
 /* ---------- PMTiles-Quellen ---------- */
 class BlobSource {
   constructor(blob) { this.blob = blob; }
@@ -53,10 +82,20 @@ function getPkg() {
   if (!pkgPromise) {
     pkgPromise = (async () => {
       try {
-        const cache = await caches.open(PKG_CACHE);
-        const resp = await cache.match(PKG_KEY);
-        if (!resp) return null;
-        const blob = await resp.blob();
+        let blob = await idbGet('pkg');
+        if (!blob) {
+          // Migration von früherer Version, die den Cache Storage nutzte
+          try {
+            const cache = await caches.open(PKG_CACHE);
+            const resp = await cache.match(PKG_KEY);
+            if (resp) {
+              blob = await resp.blob();
+              await idbSet('pkg', blob);
+              await cache.delete(PKG_KEY);
+            }
+          } catch (e) { /* Migration optional */ }
+        }
+        if (!blob) return null;
         return new pmtiles.PMTiles(new BlobSource(blob));
       } catch (err) { return null; }
     })();

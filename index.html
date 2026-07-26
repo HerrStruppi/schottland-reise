@@ -859,18 +859,51 @@ function renderOfflineRow() {
   if (el) el.innerHTML = offlineHtml();
 }
 
+/* Paket-Speicher: IndexedDB (iOS leert Cache Storage aggressiv, IDB nicht) */
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const q = indexedDB.open('highlands', 1);
+    q.onupgradeneeded = () => q.result.createObjectStore('kv');
+    q.onsuccess = () => res(q.result);
+    q.onerror = () => rej(q.error);
+  });
+}
+async function idbGet(key) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const r = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbSet(key, val) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(val, key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+
 async function offlineCheck() {
-  if (!('caches' in window) || location.protocol === 'file:') {
+  if (!('indexedDB' in window) || location.protocol === 'file:') {
     OFF.state = 'unsupported'; renderOfflineRow(); return;
   }
   try { OFF.meta = await (await fetch('tiles-meta.json', { cache: 'no-store' })).json(); }
   catch (e) { try { OFF.meta = await (await fetch('tiles-meta.json')).json(); } catch (e2) {} }
   try {
-    const c = await caches.open('tilepkg-v1');
-    const r = await c.match('pkg.pmtiles');
-    if (!r) OFF.state = 'missing';
+    let b = await idbGet('pkg');
+    if (!b && 'caches' in window) {
+      // Migration: Paket aus altem Cache-Storage-Speicher übernehmen
+      try {
+        const c = await caches.open('tilepkg-v1');
+        const r = await c.match('pkg.pmtiles');
+        if (r) { b = await r.blob(); await idbSet('pkg', b); await c.delete('pkg.pmtiles'); }
+      } catch (e) {}
+    }
+    if (!b) OFF.state = 'missing';
     else {
-      const b = await r.blob();
       OFF.size = b.size;
       OFF.state = (!OFF.meta || b.size === OFF.meta.size) ? 'ok' : 'outdated';
     }
@@ -900,12 +933,13 @@ async function downloadPkg() {
     }
     const blob = new Blob(chunks, { type: 'application/octet-stream' });
     if (OFF.meta.size && blob.size !== OFF.meta.size) throw new Error('unvollständig (' + fmtMb(blob.size) + ')');
-    const c = await caches.open('tilepkg-v1');
-    await c.put('pkg.pmtiles', new Response(blob, { headers: { 'Content-Type': 'application/octet-stream' } }));
+    await idbSet('pkg', blob);
+    const check = await idbGet('pkg');
+    if (!check || check.size !== blob.size) throw new Error('Speichern fehlgeschlagen');
     OFF.size = blob.size; OFF.state = 'ok'; renderOfflineRow();
     navigator.serviceWorker?.controller?.postMessage({ type: 'pkg-updated' });
     refreshVector();
-    toast('Offline-Karte gespeichert ✓');
+    toast('Offline-Karte gespeichert');
   } catch (e) {
     OFF.err = e.message; OFF.state = 'missing'; renderOfflineRow();
   }
