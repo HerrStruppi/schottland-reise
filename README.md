@@ -14,10 +14,11 @@ Offline-Kartenpaket (~92 MB); danach funktioniert alles ohne Netz.
 `index.html` (`GATE.hash`) eintragen (`echo -n 'neues-pw' | shasum -a 256`).
 Hinweis: Das Gate ist Komfort-Schutz im Client – das Repo selbst ist öffentlich.
 
-**Features:** Etappen-Modus mit Kurzbeschreibung, Komoot-Fotos
+**Features:** Etappen-Modus mit ausführlicher Beschreibung, ~190 Komoot-Fotos inkl.
+Vollbild-Galerie
 (`stage-info-data.js`, Fotos werden vom Komoot-CDN geladen und auf dem Gerät
-gecacht, nicht im Repo gespeichert), 5-Sterne-Bewertung pro Etappe (lokal pro
-Gerät, `localStorage`), Zeltplatz-Kandidaten mit Quellen (`camps-data.js`,
+gecacht, nicht im Repo gespeichert), Daumen-Bewertung (hoch/runter) pro Etappe mit Zählern (lokal pro Gerät,
+`localStorage`; Datenstruktur für späteren Geräte-Sync vorbereitet), Zeltplatz-Kandidaten mit Quellen (`camps-data.js`,
 Karte ab Zoom 10 + im Etappen-Sheet), Linien-Modus mit Fahrplantabellen und
 „Zeiten prüfen“-Links zu den offiziellen Seiten.
 
