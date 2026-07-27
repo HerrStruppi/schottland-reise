@@ -218,6 +218,20 @@
     opacity: 0.5;
   }
   .stops .skip span { font-size: 11.5px; color: var(--muted); font-style: italic; }
+  .varbadge {
+    display: inline-block; font-size: 10.5px; font-weight: 700; padding: 2px 8px;
+    border-radius: 999px; letter-spacing: 0.3px; text-transform: uppercase;
+  }
+  .varrow .s { white-space: normal; }
+  .vardelta { font-variant-numeric: tabular-nums; font-size: 12.5px; }
+  .vardelta b { font-weight: 600; }
+  .vardelta .plus { color: var(--warn); }
+  .vardelta .minus { color: #137333; }
+  .srcnote {
+    font-size: 11.5px; color: var(--muted); display: flex; gap: 6px;
+    align-items: flex-start; margin: 8px 0 2px;
+  }
+  .srcnote .ic { width: 14px; height: 14px; margin-top: 1px; }
   .stagechips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
   .stagechip {
     font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px;
@@ -497,6 +511,7 @@
 <script src="camps-data.js"></script>
 <script src="osm-camps-data.js"></script>
 <script src="places-data.js"></script>
+<script src="variants-data.js"></script>
 <script src="vendor/leaflet.min.js"></script>
 <script src="vendor/protomaps-leaflet.js"></script>
 <script src="vendor/flavor-scotland.js"></script>
@@ -705,6 +720,45 @@ for (const ln of TRANSIT.lines) {
   lineLayers[ln.id] = group;
 }
 
+/* ================= Varianten =================
+   Gestrichelt in der Trail-Farbe, standardmäßig unsichtbar. Sie tauchen auf,
+   sobald die betroffene Etappe oder die Variante selbst gewählt ist – sonst
+   wäre die Karte nicht mehr lesbar. */
+const VARIANT_KINDS = {
+  landschaft: { label: 'Landschaft', color: '#2e7d32', bg: '#e6f4ea' },
+  wetter:     { label: 'Schlechtwetter', color: '#1a56ab', bg: '#e8f0fe' },
+  versorgung: { label: 'Versorgung', color: '#a35400', bg: '#fdf0e3' },
+  abkuerzung: { label: 'Abkürzung', color: '#5f6368', bg: '#f1f3f4' }
+};
+const variantById = {};
+const vstageLayers = {};     // id -> {line, hit, stage, variant}
+for (const v of (window.VARIANTS || [])) {
+  variantById[v.id] = v;
+  const color = TRAIL_COLORS[v.trail] || '#333';
+  for (const s of v.stages) {
+    const hit = L.polyline(s.coords, { color: '#000', weight: 20, opacity: 0 }).addTo(map);
+    const line = L.polyline(s.coords, {
+      color, weight: 4, opacity: 0, dashArray: '9 7', lineCap: 'butt'
+    }).addTo(map);
+    const open = ev => { L.DomEvent.stopPropagation(ev); showVStage(s.id); };
+    hit.on('click', open); line.on('click', open);
+    vstageLayers[s.id] = { line, hit, stage: s, variant: v };
+  }
+}
+function variantsFor(stageId) {
+  return (window.VARIANTS || []).filter(v => v.replaces.includes(stageId));
+}
+/* Welche Varianten sollen gerade sichtbar sein? */
+function showVariants(ids) {
+  const want = new Set(ids || []);
+  for (const id in vstageLayers) {
+    const e = vstageLayers[id];
+    const on = want.has(e.variant.id);
+    e.line.setStyle({ opacity: on ? 0.95 : 0, weight: on ? 4 : 4 });
+    e.hit.setStyle({ opacity: 0, weight: on ? 20 : 0 });
+  }
+}
+
 /* ---------- Übernachtungs-Kandidaten ---------- */
 for (const c of (window.CAMPS || [])) {
   const t = CAMP_TYPES[campType(c)];
@@ -812,6 +866,7 @@ function styleLine(id, mode) {
 }
 function resetStyles() {
   document.body.classList.remove('line-focus');
+  showVariants([]);
   for (const id in stageLayers) styleStage(id, 'normal');
   for (const id in lineLayers) styleLine(id, 'normal');
   wptMarkers.forEach(m => m.setStyle({ opacity: 1, fillOpacity: 1 }));
@@ -822,10 +877,30 @@ function focusStage(id, fly, noFit) {
   for (const sid in stageLayers) styleStage(sid, sid === id ? 'sel' : 'dim');
   for (const lid in lineLayers) styleLine(lid, 'normal');
   wptMarkers.forEach(m => m.setStyle({ opacity: 1, fillOpacity: 1 }));
+  showVariants(variantsFor(id).map(v => v.id));
   if (!noFit) fitWithSheet(stageLayers[id].line.getBounds(), fly);
+}
+/* Variante als Ganzes: sie kräftig, die ersetzten Etappen hell daneben –
+   so sieht man sofort, wo sie abzweigt und wieder trifft. */
+function focusVariant(id, fly, noFit, onlyStage) {
+  const v = variantById[id];
+  document.body.classList.remove('line-focus');
+  for (const sid in stageLayers) styleStage(sid, v.replaces.includes(sid) ? 'normal' : 'dim');
+  for (const lid in lineLayers) styleLine(lid, 'dim');
+  showVariants([id]);
+  for (const s of v.stages) {
+    const sel = !onlyStage || s.id === onlyStage;
+    vstageLayers[s.id].line.setStyle({ opacity: sel ? 1 : 0.35, weight: sel ? 5 : 3.5 });
+  }
+  if (noFit) return;
+  const b = L.latLngBounds([]);
+  const src = onlyStage ? [vstageLayers[onlyStage].stage] : v.stages;
+  src.forEach(s => s.coords.forEach(c => b.extend(c)));
+  fitWithSheet(b, fly);
 }
 function focusLine(id, fly, noFit) {
   document.body.classList.add('line-focus');
+  showVariants([]);
   wptMarkers.forEach(m => m.setStyle({ opacity: 0, fillOpacity: 0 }));
   for (const sid in stageLayers) styleStage(sid, 'dim');
   for (const lid in lineLayers) styleLine(lid, lid === id ? 'sel' : 'dim');
@@ -1099,6 +1174,24 @@ function renderOverview(fly) {
       ${icon('chevRight', 'chev')}
     </div>`).join('');
   h += `</details>`;
+  const VS = window.VARIANTS || [];
+  if (VS.length) {
+    h += `<details class="sec"><summary><h2>Varianten &amp; Umleitungen · ${VS.length}</h2></summary>`;
+    h += `<div class="note">${icon('info')}<div>Alternativen zu einzelnen Etappen – bei schlechtem Wetter,
+      zum Auffüllen der Vorräte oder weil es schöner ist. Auf der Karte gestrichelt, sobald die
+      betroffene Etappe gewählt ist.</div></div>`;
+    h += VS.map(v => {
+      const k = VARIANT_KINDS[v.kind] || VARIANT_KINDS.abkuerzung;
+      return `<div class="row varrow" onclick="showVariant('${v.id}')">
+        <div class="kicon" style="background:${k.color}">${icon('link')}</div>
+        <div class="grow"><div class="t">${esc(v.name)}
+          <span class="varbadge" style="background:${k.bg};color:${k.color}">${k.label}</span></div>
+          <div class="s">statt ${esc(v.replaces.join(', '))}</div>
+          <div class="vardelta">${deltaHtml(v)}</div></div>
+        ${icon('chevRight', 'chev')}
+      </div>`;
+    }).join('') + `</details>`;
+  }
   const PL = window.PLACES || [];
   if (PL.length) {
     h += `<details class="sec"><summary><h2>Orte &amp; Versorgung · ${PL.length}</h2></summary>`;
@@ -1192,6 +1285,20 @@ function renderStage(id, fly) {
   }
   h += voteRow(id);
   if (notes.length) h += notes.map(n => `<div class="note">${icon('info')}<div>${esc(n)}</div></div>`).join('');
+  const vars = variantsFor(id);
+  if (vars.length) {
+    h += `<h2>Varianten &amp; Umleitungen</h2>` + vars.map(v => {
+      const k = VARIANT_KINDS[v.kind] || VARIANT_KINDS.abkuerzung;
+      return `<div class="row varrow" onclick="showVariant('${v.id}')">
+        <div class="kicon" style="background:${k.color}">${icon('link')}</div>
+        <div class="grow"><div class="t">${esc(v.name)}
+            <span class="varbadge" style="background:${k.bg};color:${k.color}">${k.label}</span></div>
+          <div class="s">${esc(v.why)}</div>
+          <div class="vardelta">${deltaHtml(v)}</div></div>
+        ${icon('chevRight', 'chev')}
+      </div>`;
+    }).join('');
+  }
   const places = placesNearStage(id);
   if (places.length) {
     h += `<h2>Orte an dieser Etappe</h2>` + places.map(p => `
@@ -1319,6 +1426,128 @@ function campRow(c) {
     ${c.photos && c.photos[0] ? `<img class="thumb" loading="lazy" decoding="async" width="58" height="46"
       src="${c.photos[0].url}" alt="" title="${esc(c.photos[0].credit || '')}">` : ''}
   </div>`;
+}
+
+/* Wie viel länger/kürzer ist die Variante gegenüber dem, was sie ersetzt? */
+function variantDelta(v) {
+  let km = 0, up = 0, upKnown = true;
+  for (const sid of v.replaces) {
+    const s = stageLayers[sid];
+    if (!s) continue;
+    km += s.stage.km; up += s.stage.up;
+  }
+  if (v.up === null) upKnown = false;
+  return { km: v.km - km, up: upKnown ? v.up - up : null, baseKm: km, baseUp: up };
+}
+function deltaHtml(v) {
+  const d = variantDelta(v);
+  const sign = n => (n > 0 ? '+' : '−') + fmt(Math.abs(Math.round(n * 10) / 10));
+  const cls = n => n > 0 ? 'plus' : 'minus';
+  let s = `<b>${fmt(v.km)} km</b> · ${v.up === null ? '↑ —' : '↑ ' + v.up + ' m'}`;
+  if (d.baseKm) {
+    s += ` <span class="${cls(d.km)}">${sign(d.km)} km</span>`;
+    if (d.up !== null) s += ` <span class="${cls(d.up)}">${sign(d.up)} m</span>`;
+  }
+  return s;
+}
+function srcNote(sources) {
+  if (!sources.includes('osm')) return '';
+  const nur = !sources.includes('komoot');
+  return `<div class="srcnote">${icon('info')}<div>${nur ? 'Der Verlauf ist' : 'Teile des Verlaufs sind'}
+    aus OpenStreetMap-Wegen berechnet, nicht mit GPS abgelaufen. Höhenmeter aus SRTM-Daten –
+    beides zur Orientierung, nicht metergenau.</div></div>`;
+}
+
+function renderVariant(id) {
+  const v = variantById[id];
+  if (!v) return;
+  maybeSnap('half');
+  focusVariant(id, true);
+  const k = VARIANT_KINDS[v.kind] || VARIANT_KINDS.abkuerzung;
+  const col = TRAIL_COLORS[v.trail];
+  let h = `<div class="topline">
+      ${backBtn()}
+      <span class="varbadge" style="background:${k.bg};color:${k.color}">${k.label}</span>
+      <span class="spacer"></span>
+      <span class="chip">Variante</span>
+    </div>
+    <h1>${esc(v.name)}</h1>
+    <div class="statgrid">
+      <div><b>${fmt(v.km)} km</b><span>Distanz</span></div>
+      <div><b>${v.up === null ? '—' : '↑ ' + v.up + ' m'}</b><span>Aufstieg</span></div>
+      <div><b>${v.stages.length}</b><span>Etappen</span></div>
+    </div>
+    <div class="note">${icon('info')}<div><b>Warum:</b> ${esc(v.why)}</div></div>
+    <p class="stagetext">${esc(v.text)}</p>
+    ${srcNote(v.sources)}`;
+  h += `<h2>Ersetzt</h2>` + v.replaces.map(sid => {
+    const e = stageLayers[sid];
+    if (!e) return '';
+    const c = TRAIL_COLORS[e.trailKey];
+    return `<div class="row" onclick="showStage('${sid}')">
+      <div class="num" style="background:${c}">${sid.split('-')[1]}</div>
+      <div class="grow"><div class="t">${esc(e.stage.from)} → ${esc(e.stage.to)}</div></div>
+      <div class="meta">${fmt(e.stage.km)} km<br>↑ ${e.stage.up} m</div>
+      ${icon('chevRight', 'chev')}
+    </div>`;
+  }).join('');
+  const d = variantDelta(v);
+  if (d.baseKm) {
+    h += `<div class="tt-note">Zusammen ${fmt(Math.round(d.baseKm * 10) / 10)} km und
+      ↑ ${d.baseUp} m – die Variante ist ${deltaWord(d.km)}.</div>`;
+  }
+  h += `<h2>Etappen der Variante</h2>` + v.stages.map((s, i) => `
+    <div class="row" onclick="showVStage('${s.id}')">
+      <div class="num" style="background:${col};opacity:0.75">${i + 1}</div>
+      <div class="grow"><div class="t">${esc(s.from)} → ${esc(s.to)}</div></div>
+      <div class="meta">${fmt(s.km)} km<br>${s.up === null ? '↑ —' : '↑ ' + s.up + ' m'}</div>
+      ${icon('chevRight', 'chev')}
+    </div>`).join('');
+  if (v.src) h += `<div class="tt-note"><a href="${v.src}" target="_blank" rel="noopener">Quelle nachlesen</a></div>`;
+  content.innerHTML = h;
+  content.scrollTop = 0;
+}
+const deltaWord = km => km > 0.2 ? fmt(Math.round(km * 10) / 10) + ' km länger'
+  : km < -0.2 ? fmt(Math.round(-km * 10) / 10) + ' km kürzer' : 'etwa gleich lang';
+
+function renderVStage(id, fly) {
+  const e = vstageLayers[id];
+  if (!e) return;
+  const s = e.stage, v = e.variant;
+  maybeSnap('half');
+  focusVariant(v.id, fly, false, id);
+  const i = v.stages.indexOf(s);
+  const start = s.coords[0], end = s.coords[s.coords.length - 1];
+  const camps = (window.CAMPS || []).filter(c =>
+    Math.min(...s.coords.filter((_, n) => n % 12 === 0).map(p => haversineKm([c.lat, c.lng], p))) <= 2.5);
+  let h = `<div class="topline">
+      ${backBtn()}
+      <span class="chip" style="background:${TRAIL_COLORS[v.trail]}1a;color:${TRAIL_COLORS[v.trail]}">${esc(v.name)}</span>
+      <span class="spacer"></span>
+      <span class="chip">${i + 1} / ${v.stages.length}</span>
+    </div>
+    <h1>${esc(s.from)} → ${esc(s.to)}</h1>
+    <div class="statgrid">
+      <div><b>${fmt(s.km)} km</b><span>Distanz</span></div>
+      <div><b>${s.up === null ? '—' : '↑ ' + s.up + ' m'}</b><span>Aufstieg</span></div>
+    </div>
+    ${srcNote([s.src])}`;
+  const prev = v.stages[i - 1], next = v.stages[i + 1];
+  h += `<div class="topline">
+      <button class="backbtn" ${prev ? `onclick="showVStage('${prev.id}')"` : 'disabled'}>${icon('chevLeft')}</button>
+      <span class="grow" style="flex:1"></span>
+      <button class="backbtn" ${next ? `onclick="showVStage('${next.id}')"` : 'disabled'}>${icon('chevRight')}</button>
+    </div>`;
+  if (camps.length) {
+    h += `<h2>Übernachten in der Nähe</h2>` + camps.slice(0, 8).map(campRow).join('');
+  }
+  h += `<h2>Anbindung am Start · ${esc(s.from)}</h2>`;
+  const a = nearbyLines(start), b = nearbyLines(end);
+  h += a.length ? a.map(transitCard).join('') : `<div class="note">${icon('info')}<div>Keine erfasste Linie in der Nähe.</div></div>`;
+  h += `<h2>Anbindung am Ziel · ${esc(s.to)}</h2>`;
+  h += b.length ? b.map(transitCard).join('') : `<div class="note">${icon('info')}<div>Keine erfasste Linie in der Nähe.</div></div>`;
+  content.innerHTML = h;
+  content.scrollTop = 0;
 }
 
 /* ---------- Orte ---------- */
@@ -1453,6 +1682,8 @@ function renderView(v) {
   if (v.t === 'stage') renderStage(v.id, !!prev);
   else if (v.t === 'line') renderLine(v.id);
   else if (v.t === 'place') renderPlace(v.id);
+  else if (v.t === 'variant') renderVariant(v.id);
+  else if (v.t === 'vstage') renderVStage(v.id, !!prev);
   else renderOverview(!!prev);
   updateStageNav();
 }
@@ -1467,6 +1698,8 @@ function go(v) {
 window.showStage = id => go({ t: 'stage', id });
 window.showLine = id => go({ t: 'line', id });
 window.showPlace = id => go({ t: 'place', id });
+window.showVariant = id => go({ t: 'variant', id });
+window.showVStage = id => go({ t: 'vstage', id });
 window.showOverview = () => go({ t: 'overview' });
 window.goBack = () => renderView(viewStack.pop() || { t: 'overview' });
 function backBtn() {
@@ -1476,6 +1709,8 @@ function backBtn() {
     if (p && p.t === 'stage') label = 'Zurück zu ' + esc(shortStageName(stageLayers[p.id].stage));
     else if (p && p.t === 'place') label = 'Zurück zu ' + esc(placeById[p.id].name);
     else if (p && p.t === 'line') label = 'Zurück zu ' + esc(lineLayers[p.id].data.name);
+    else if (p && p.t === 'variant') label = 'Zurück zu ' + esc(variantById[p.id].name);
+    else if (p && p.t === 'vstage') label = 'Zurück zu ' + esc(vstageLayers[p.id].stage.from);
   } catch (e) { /* verwaister Eintrag – dann eben die Übersicht */ }
   return `<button class="backbtn" onclick="goBack()" title="${label}">${icon('arrowLeft')}</button>`;
 }
@@ -1483,7 +1718,10 @@ function backBtn() {
 function refocus() {
   if (!view || view.t === 'overview') { resetStyles(); return; }
   if (view.t === 'stage') focusStage(view.id, false, true);
-  else focusLine(view.id, false, true);
+  else if (view.t === 'variant') focusVariant(view.id, false, true);
+  else if (view.t === 'vstage') focusVariant(vstageLayers[view.id].variant.id, false, true, view.id);
+  else if (view.t === 'line') focusLine(view.id, false, true);
+  else resetStyles();
 }
 
 /* Vor/Zurück durchläuft alle Etappen – über das Trail-Ende hinaus direkt
@@ -1525,6 +1763,8 @@ document.getElementById('fitBtn').innerHTML =
 document.getElementById('fitBtn').addEventListener('click', () => {
   if (view && view.t === 'stage') fitWithSheet(stageLayers[view.id].line.getBounds(), true);
   else if (view && view.t === 'line') fitWithSheet(lineBounds(view.id), true);
+  else if (view && view.t === 'variant') focusVariant(view.id, true);
+  else if (view && view.t === 'vstage') focusVariant(vstageLayers[view.id].variant.id, true, false, view.id);
   else if (view && view.t === 'place') {
     const p = placeById[view.id];
     map.stop(); map.flyTo([p.lat, p.lng], p.kind === 'town' ? 13 : 12, { duration: 0.7 });
@@ -1570,6 +1810,8 @@ function legendHtml() {
   }
   h += row(`<span style="width:11px;height:11px;border-radius:50%;background:${TRAIL_COLORS.whw};border:2px solid #fff;box-shadow:0 0 0 1px #bbb"></span>`,
     'Etappenstart/-ziel (angetippt öffnet die Etappe)');
+  h += row(legendSwatch('dash', TRAIL_COLORS.cwt, 4),
+    'Gestrichelt: Variante oder Umleitung – erscheint bei der betroffenen Etappe');
   h += `<h2>Übernachten</h2>`;
   for (const k in CAMP_TYPES) {
     const t = CAMP_TYPES[k];

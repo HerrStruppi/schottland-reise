@@ -74,6 +74,8 @@ darum, den Server nicht mit Massendownloads zu belasten.
 | `camps-data.js` | Kuratierte Unterkünfte mit Beschreibung und Quelle (von Hand gepflegt). `type`: `hotel`, `hostel`, `camp`, `bothy`, `wild`. |
 | `osm-camps-data.js` | Zeltstellen aus der OpenStreetMap-Community. **Generiert** – mit `osm-camps.py` neu erzeugen. Bewusst getrennt von `camps-data.js`: ungeprüfte Fremdeinträge. |
 | `osm-camps.py` | Holt `tourism=camp_site` & Co. per Overpass, filtert auf 1,5 km um die Route und entfernt Dubletten zu `camps-data.js`. Braucht Netz, läuft **nicht** im Deploy. |
+| `variants-data.js` | Varianten und Umleitungen des CWT (`window.VARIANTS`), je Variante in Etappen zerlegt. **Generiert** – mit `variants-build.py` neu erzeugen. `stages[].src`: `komoot` = echter Track, `osm` = über OSM-Wege gerouteter Verlauf. |
+| `variants-build.py` | Baut `variants-data.js`: Komoot-Tracks aus `gpx/komoot-varianten/`, alles andere über den öffentlichen Valhalla-Router bzw. einen eigenen Dijkstra über OSM-Wege (nötig, wo Valhalla den durchgehenden Pfad nicht kennt). Höhen aus SRTM. Braucht Netz, läuft **nicht** im Deploy. |
 | `places-data.js` | Orte an der Strecke (`window.PLACES`) mit Versorgungs-Infos: Läden, Apotheke, Post, Geld, Wäsche, Anbindung. Infrastruktur aus einer OSM-Abfrage, Texte von Hand. |
 | `vendor/flavor-scotland.js` | Farbschema der Vektorkarte (OSM-Carto-angelehnt, generiert aus @protomaps/basemaps `light`) |
 | `fahrplaene.md` | Zug- und Busfahrpläne als Text (Quelle der Fahrplantabellen) |
