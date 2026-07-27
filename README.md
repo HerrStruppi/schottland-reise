@@ -31,12 +31,20 @@ Speicherdruck geleert, IndexedDB nicht):
 |---|---|---|
 | App, Daten, Fotos | ca. 40 MB | automatisch beim ersten Start |
 | Vektorkarte (`tiles/scotland.pmtiles`) | 92 MB | automatisch; deckt die **ganze Region** in allen Zoomstufen ab |
-| Geländekarte (OpenTopoMap-Raster) | 130 MB (Z8–14) bzw. 370 MB (Z8–15) | Knopf in der Übersicht; nur ein **Korridor von ±1,5–3 km** um die Route |
+| Geländekarte (OpenTopoMap-Raster) | 94 MB (Z8–14), 180 MB (bis Z15), 323 MB (bis Z16) | Knopf in der Übersicht; nur ein **Korridor von ±1–3 km** um die Route |
 
 Die Geländekarte ist zum Wandern die bessere (Höhenlinien), die Vektorkarte die
 vollständigere. Wo keine Geländekachel gespeichert ist, scheint automatisch die
-Vektorkarte durch. Der Download ist gedrosselt – OpenTopoMap bittet ausdrücklich
-darum, den Server nicht mit Massendownloads zu belasten.
+Vektorkarte durch.
+
+Zum Download-Tempo: Der Engpass ist nicht die Leitung, sondern dass OpenTopoMap
+nicht vorhandene Kacheln erst rendert – fertige kommen in ~50 ms, frische
+brauchen bis zu 3,5 s. Die Parallelität regelt sich deshalb selbst nach
+Antwortzeit und Fehlercodes (429/503), zwischen 2 und 16 gleichzeitigen
+Anfragen. Gemessen: ~62 Kacheln/s in den unteren, breit zwischengespeicherten
+Zoomstufen, in den hohen deutlich weniger. Kachelgrößen sinken mit dem Zoom
+(z12 42 kB, z14 23 kB, z16 9 kB) – eine pauschale Schätzung überschätzt die
+hohen Stufen um mehr als das Doppelte.
 
 ## Installation & Updates
 
