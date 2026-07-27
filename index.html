@@ -21,6 +21,7 @@
     --warn: #c5221f;
     --sheet-r: 16px;
     --safe-b: env(safe-area-inset-bottom, 0px);
+    --sheet-h: 176px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; margin: 0; overscroll-behavior: none; }
@@ -49,12 +50,16 @@
     display: flex; align-items: center; justify-content: center; color: var(--ink);
   }
   .mapbtn:active { background: #f1f3f4; }
+  .mapbtns { transition: opacity 0.2s; }
+  /* Bei fast ganz offener Schublade liegen die unteren Karten-Buttons
+     ohnehin darunter – dann komplett ausblenden. */
+  body.sheet-high .mapbtns { opacity: 0; pointer-events: none; }
 
   /* ---------- Bottom Sheet ---------- */
   #sheet {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 1200;
-    height: calc(176px + var(--safe-b));
-    transition: height 0.25s cubic-bezier(.4,0,.2,1);
+    height: calc(var(--sheet-h) + var(--safe-b));
+    transition: height 0.28s cubic-bezier(.32,.72,0,1);
     pointer-events: none;
   }
   #sheet.dragging { transition: none; }
@@ -72,8 +77,43 @@
   }
   #sheetContent {
     overflow-y: auto; -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain; touch-action: pan-y;
     padding: 2px 16px calc(24px + var(--safe-b));
   }
+  /* Solange die Schublade nicht ganz offen ist, wird nicht der Inhalt,
+     sondern die Schublade bewegt (siehe Gesten-Logik unten). */
+  #sheet:not(.expanded) #sheetContent { overflow-y: hidden; }
+
+  /* ---------- Etappen-Navigation (schwebend über der Schublade) ---------- */
+  #stagenav {
+    position: fixed; left: 10px; right: 10px; z-index: 1150;
+    bottom: calc(var(--sheet-h) + var(--safe-b) + 10px);
+    display: flex; gap: 8px; justify-content: space-between; align-items: flex-end;
+    pointer-events: none;
+    transition: bottom 0.28s cubic-bezier(.32,.72,0,1), opacity 0.2s;
+  }
+  #sheet.dragging ~ #stagenav { transition: opacity 0.2s; }
+  #stagenav[hidden] { display: none; }
+  /* Ist die Schublade fast ganz offen, würden die Buttons den Rest der Karte
+     zustellen – dann ausblenden. */
+  body.sheet-high #stagenav { opacity: 0; pointer-events: none; }
+  @media (min-width: 700px) { #stagenav { max-width: 440px; right: auto; width: 420px; } }
+  .navbtn {
+    pointer-events: auto; display: inline-flex; align-items: center; gap: 6px;
+    max-width: 47%; border: none; cursor: pointer;
+    background: #fff; color: var(--ink); border-radius: 22px;
+    padding: 8px 14px; box-shadow: 0 1px 5px rgba(0,0,0,0.3);
+    font-size: 13px; font-weight: 500; line-height: 1.15;
+  }
+  .navbtn:active { background: #f1f3f4; }
+  .navbtn .ic { width: 17px; height: 17px; color: var(--muted); }
+  .navbtn b { display: block; font-size: 12.5px; font-weight: 600; }
+  .navbtn small {
+    display: block; font-size: 10.5px; color: var(--muted); font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px;
+  }
+  .navbtn .tx { min-width: 0; text-align: left; }
+  .navbtn.next .tx { text-align: right; }
 
   h1 { font-size: 19px; margin: 4px 0 2px; font-weight: 600; }
   .sub { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
@@ -149,6 +189,59 @@
   .tt-title { font-size: 13px; font-weight: 600; margin: 14px 0 2px; }
   .tt-note { font-size: 12px; color: var(--muted); margin: 2px 0 8px; }
 
+  /* ---------- Linienverlauf (Metro-Stil) ---------- */
+  .stops { margin: 6px 0 2px; }
+  .stops > div { position: relative; padding-left: 28px; }
+  .stops > div::before {
+    content: ''; position: absolute; left: 6.5px; top: 0; bottom: 0; width: 3px;
+    background: var(--lc); border-radius: 2px;
+  }
+  .stops > div:first-child::before { top: 20px; }
+  .stops > div:last-child::before { bottom: auto; height: 20px; }
+  .stops .st { padding-top: 9px; padding-bottom: 9px; cursor: pointer; }
+  .stops .st:active { background: #f8f9fa; }
+  .stops .st > .dot {
+    position: absolute; left: 1px; top: 13px; width: 14px; height: 14px;
+    border-radius: 50%; background: #fff; border: 3px solid var(--lc); box-sizing: border-box;
+  }
+  .stops .st.hub > .dot { width: 18px; height: 18px; left: -1px; top: 11px; border-width: 4px; }
+  .stops .st .nm { font-size: 14px; font-weight: 500; }
+  .stops .st .nm .ic { width: 13px; height: 13px; color: var(--muted); margin-left: 4px; }
+  /* Übersprungene Halte: gestrichelte Linie + Anzahl */
+  .stops .skip { padding-top: 3px; padding-bottom: 3px; }
+  .stops .skip::before {
+    background: repeating-linear-gradient(to bottom,
+      var(--lc) 0 4px, transparent 4px 9px);
+    opacity: 0.5;
+  }
+  .stops .skip span { font-size: 11.5px; color: var(--muted); font-style: italic; }
+  .stagechips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .stagechip {
+    font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px;
+    white-space: nowrap; cursor: pointer;
+  }
+  .stagechip small { font-weight: 500; opacity: 0.75; }
+
+  /* ---------- Legende ---------- */
+  #legend {
+    position: fixed; inset: 0; z-index: 2500; background: rgba(0,0,0,0.35);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  #legend[hidden] { display: none; }
+  #legendCard {
+    background: #fff; width: 100%; max-width: 440px; max-height: 88vh;
+    border-radius: 18px 18px 0 0; overflow-y: auto;
+    padding: 18px 16px calc(24px + var(--safe-b));
+    box-shadow: 0 -2px 20px rgba(0,0,0,0.35);
+  }
+  #legendCard .lgtop { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  #legendCard h1 { flex: 1; }
+  .lgitem { display: flex; align-items: center; gap: 10px; padding: 5px 2px; font-size: 13px; }
+  .lgitem .sw { flex: none; width: 34px; height: 16px; display: flex; align-items: center; justify-content: center; }
+  .lgitem span { min-width: 0; }
+  .lgline { width: 32px; height: 0; border-top-style: solid; }
+  .lgpatch { width: 26px; height: 14px; border-radius: 3px; }
+
   .telbtn {
     display: inline-flex; align-items: center; gap: 6px;
     margin: 4px 8px 4px 0; padding: 8px 14px; border-radius: 24px;
@@ -179,6 +272,18 @@
   body:not(.show-transit-lbl) .linepill.minor { display: none; }
 
   .leaflet-control-attribution { font-size: 9px; }
+
+  /* Auf der kontrastreichen Topo-Karte bekommen alle Overlay-Linien einen
+     feinen weißen Lichtsaum – dadurch bleiben sie filigran, heben sich aber
+     auch im transparenten (nicht selektierten) Zustand klar ab. */
+  body.topo .leaflet-overlay-pane svg {
+    filter: drop-shadow(0 0 1.2px rgba(255,255,255,0.95))
+            drop-shadow(0 0 2.5px rgba(255,255,255,0.65));
+  }
+  body.topo .leaflet-tooltip.wpt-label, body.topo .leaflet-tooltip.stop-label {
+    background: rgba(255,255,255,0.97); box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  }
+  body.topo .linepill { box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
 
   /* ---------- Offline & Updates ---------- */
   .progress { height: 6px; border-radius: 3px; background: #e8eaed; overflow: hidden; margin: 8px 0 4px; }
@@ -238,10 +343,6 @@
   .photos img {
     width: 220px; height: 140px; object-fit: cover; border-radius: 10px;
     background: #eceff1; display: block;
-  }
-  .photos figcaption {
-    font-size: 10px; color: #9aa0a6; padding: 2px 2px 0;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .checklink {
     display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 500;
@@ -328,7 +429,9 @@
   <b>Highlands-Reise 2026</b><span>Klara, Simi und Zacha</span>
 </div>
 <div class="mapbtns">
-  <button class="mapbtn" id="baseToggle" title="Karte/Gelände">⛰</button>
+  <button class="mapbtn" id="baseToggle" title="Topografische Karte / Vektorkarte">⛰</button>
+  <button class="mapbtn" id="legendBtn" title="Kartenlegende">?</button>
+  <button class="mapbtn" id="fitBtn" title="Auswahl wieder einpassen"></button>
   <button class="mapbtn" id="locateBtn" title="Mein Standort">◎</button>
 </div>
 
@@ -337,6 +440,11 @@
     <div id="grip"></div>
     <div id="sheetContent"></div>
   </div>
+</div>
+<div id="stagenav" hidden></div>
+
+<div id="legend" hidden>
+  <div id="legendCard"></div>
 </div>
 
 <div id="gate" hidden>
@@ -437,7 +545,7 @@ function refreshVector() {
   if (!vectorSupported) return;
   if (vector && map.hasLayer(vector)) map.removeLayer(vector);
   vector = buildVector();
-  if (!topoOn) vector.addTo(map);
+  vector.addTo(map);
 }
 if (vectorSupported) {
   vector = buildVector();
@@ -446,15 +554,29 @@ if (vectorSupported) {
     navigator.serviceWorker.addEventListener('controllerchange', () => refreshVector(), { once: true });
   }
 }
+/* Topografische Karte: Standard-Basiskarte. Sie liegt ÜBER der Vektorkarte,
+   die als Unterlage aktiv bleibt – wo Topo-Kacheln fehlen (offline!), scheint
+   dadurch die offline gespeicherte Vektorkarte durch. */
 const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-  maxZoom: 17, zIndex: 5, attribution: '© OpenStreetMap, SRTM | © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA, nur online)'
+  maxNativeZoom: 17, maxZoom: 19, zIndex: 8,
+  attribution: '© OpenStreetMap, SRTM | © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA, nur online)'
 });
-let topoOn = false;
-document.getElementById('baseToggle').addEventListener('click', () => {
+let topoOn = localStorage.getItem('base.topo') !== '0';
+const baseToggle = document.getElementById('baseToggle');
+function applyBase() {
+  document.body.classList.toggle('topo', topoOn);
+  if (topoOn) topo.addTo(map);
+  else if (map.hasLayer(topo)) map.removeLayer(topo);
+  baseToggle.textContent = topoOn ? '⛰' : '▦';
+  baseToggle.title = topoOn ? 'Topografische Karte (aktiv)' : 'Vektorkarte (aktiv)';
+}
+baseToggle.addEventListener('click', () => {
   topoOn = !topoOn;
-  if (topoOn) { if (vector && map.hasLayer(vector)) map.removeLayer(vector); topo.addTo(map); }
-  else { map.removeLayer(topo); if (vector) vector.addTo(map); }
+  localStorage.setItem('base.topo', topoOn ? '1' : '0');
+  applyBase();
+  refocus();
 });
+applyBase();
 document.getElementById('locateBtn').addEventListener('click', () => {
   map.locate({ setView: true, maxZoom: 13 });
 });
@@ -575,111 +697,222 @@ function nearbyLines(pt, maxKm = 5) {
   return res.sort((a, b) => a.d - b.d).slice(0, 4);
 }
 
+/* Strichstärken und Deckkraft. Auf der kontrastreichen Topo-Karte etwas
+   kräftiger, damit die Linien auch abgeblendet noch gut lesbar bleiben –
+   den weißen Lichtsaum liefert zusätzlich die CSS-Regel `body.topo`. */
+function ST() {
+  return topoOn
+    ? { stage: 0.95, stageDim: 0.5,  stageW: 5, stageSelW: 7.5, line: 0.9,  lineDim: 0.34, lineW: 2.8, lineSelW: 4.5 }
+    : { stage: 0.9,  stageDim: 0.25, stageW: 5, stageSelW: 7,   line: 0.75, lineDim: 0.12, lineW: 2.2, lineSelW: 4 };
+}
 function resetStyles() {
+  const s = ST();
   document.body.classList.remove('line-focus');
-  for (const id in stageLayers) stageLayers[id].line.setStyle({ opacity: 0.9, weight: 5 });
+  for (const id in stageLayers) stageLayers[id].line.setStyle({ opacity: s.stage, weight: s.stageW });
   for (const id in lineLayers) lineLayers[id].lines.forEach((l, i) => {
-    if (i % 2 === 0) l.setStyle({ opacity: 0.75, weight: 2.2 });
+    if (i % 2 === 0) l.setStyle({ opacity: s.line, weight: s.lineW });
   });
   wptMarkers.forEach(m => m.setStyle({ opacity: 1, fillOpacity: 1 }));
 }
 
-function focusStage(id, fly) {
+function focusStage(id, fly, noFit) {
+  const s = ST();
   resetStyles();
   for (const sid in stageLayers) {
-    if (sid !== id) stageLayers[sid].line.setStyle({ opacity: 0.25 });
+    if (sid !== id) stageLayers[sid].line.setStyle({ opacity: s.stageDim });
   }
   const sel = stageLayers[id];
-  sel.line.setStyle({ opacity: 1, weight: 7 });
-  fitWithSheet(sel.line.getBounds(), fly);
+  sel.line.setStyle({ opacity: 1, weight: s.stageSelW });
+  if (!noFit) fitWithSheet(sel.line.getBounds(), fly);
 }
-function focusLine(id) {
+function focusLine(id, fly, noFit) {
+  const s = ST();
   resetStyles();
   document.body.classList.add('line-focus');
   wptMarkers.forEach(m => m.setStyle({ opacity: 0, fillOpacity: 0 }));
-  for (const sid in stageLayers) stageLayers[sid].line.setStyle({ opacity: 0.3 });
+  for (const sid in stageLayers) stageLayers[sid].line.setStyle({ opacity: s.stageDim + 0.05 });
   for (const lid in lineLayers) {
-    if (lid !== id) lineLayers[lid].lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: 0.12 }); });
+    if (lid !== id) lineLayers[lid].lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: s.lineDim }); });
   }
   const g = lineLayers[id];
-  g.lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: 1, weight: 4 }); });
+  g.lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: 1, weight: s.lineSelW }); });
+  if (!noFit) fitWithSheet(lineBounds(id), fly);
+}
+function lineBounds(id) {
+  const g = lineLayers[id];
   const b = L.latLngBounds([]);
   g.data.stops.forEach(s => b.extend([s.lat, s.lng]));
   g.data.coords.forEach(c => b.extend(c));
-  fitWithSheet(b);
+  (g.data.coordsAlt || []).forEach(c => b.extend(c));
+  return b;
 }
 function fitWithSheet(bounds, fly) {
+  if (!bounds || !bounds.isValid()) return;
   map.stop();
-  const pad = { paddingTopLeft: [30, 70], paddingBottomRight: [30, sheetHeight() + 30] };
-  if (fly) map.flyToBounds(bounds, Object.assign({ duration: 0.7 }, pad));
-  else map.fitBounds(bounds, Object.assign({ animate: false }, pad));
+  const size = map.getSize();
+  /* Wichtig: Das Padding darf nie größer werden als die Karte selbst –
+     sonst rechnet Leaflet mit einer negativen Fläche und zoomt bis auf
+     Kontinent-Ebene heraus. Darum auf 45 % der Kartenhöhe deckeln. */
+  const bottom = Math.max(20, Math.min(sheetHeight() + 24, Math.round(size.y * 0.45)));
+  const top = Math.max(20, Math.min(74, Math.round(size.y * 0.18)));
+  const side = Math.max(12, Math.min(30, Math.round(size.x * 0.1)));
+  const opts = {
+    paddingTopLeft: [side, top], paddingBottomRight: [side, bottom], maxZoom: 15
+  };
+  if (fly) map.flyToBounds(bounds, Object.assign({ duration: 0.7 }, opts));
+  else map.fitBounds(bounds, Object.assign({ animate: false }, opts));
 }
 
-/* ================= Bottom Sheet ================= */
+/* ================= Bottom Sheet =================
+   Gesten-Modell wie bei Karten-Apps üblich (Google/Apple Maps):
+   Schubladenhöhe und Scrollposition des Inhalts bilden EINE gemeinsame Achse.
+   Nach oben ziehen  -> erst fährt die Schublade auf, ist sie oben, scrollt der Inhalt.
+   Nach unten ziehen -> erst scrollt der Inhalt zurück, am Anfang „anstoßen“
+                        lässt danach die Schublade wieder kleiner werden.
+   Ob die Geste die Schublade oder den Inhalt bewegt, wird einmalig beim ersten
+   touchmove entschieden – danach bleibt sie in diesem Modus (sonst ruckelt es).
+   Dadurch funktioniert es auch, wenn man die Schublade bei mittlerem
+   Scrollstand von Hand kleiner zieht: Der Scrollstand bleibt erhalten und
+   beim nächsten Hochziehen geht erst die Schublade auf, dann scrollt es weiter. */
 const sheet = document.getElementById('sheet');
 const content = document.getElementById('sheetContent');
-const SNAPS = { peek: 176, half: 330, full: () => Math.max(360, Math.round(window.innerHeight * 0.86)) };
+const SNAP_ORDER = ['peek', 'half', 'full'];
+function snapPx(name) {
+  const h = window.innerHeight;
+  if (name === 'peek') return Math.min(176, Math.round(h * 0.3));
+  if (name === 'half') return Math.round(Math.min(Math.max(h * 0.46, 300), h * 0.62));
+  return Math.max(360, Math.round(h * 0.88));
+}
 let snap = 'peek';
+let sheetPx = snapPx('peek');
+function applyHeight(px) {
+  sheetPx = Math.round(px);
+  document.documentElement.style.setProperty('--sheet-h', sheetPx + 'px');
+  sheet.classList.toggle('expanded', sheetPx >= snapPx('full') - 1);
+  document.body.classList.toggle('sheet-high', sheetPx > window.innerHeight * 0.62);
+}
 function setSnap(s) {
   snap = s;
-  const h = typeof SNAPS[s] === 'function' ? SNAPS[s]() : SNAPS[s];
-  sheet.style.height = `calc(${h}px + var(--safe-b))`;
+  applyHeight(snapPx(s));
+  if (s === 'peek') content.scrollTop = 0;
 }
-function sheetHeight() {
-  return typeof SNAPS[snap] === 'function' ? SNAPS[snap]() : SNAPS[snap];
-}
+function sheetHeight() { return sheetPx; }
+applyHeight(sheetPx);
+
 (() => {
   const grip = document.getElementById('grip');
-  let startY = 0, startH = 0, curH = 0;
-  grip.addEventListener('pointerdown', e => {
-    startY = e.clientY; startH = sheetHeight(); curH = startH;
-    sheet.classList.add('dragging');
-    grip.setPointerCapture(e.pointerId);
-    const move = ev => {
-      curH = Math.max(80, Math.min(SNAPS.full(), startH + (startY - ev.clientY)));
-      sheet.style.height = `calc(${curH}px + var(--safe-b))`;
-    };
-    const up = () => {
-      grip.removeEventListener('pointermove', move);
-      grip.removeEventListener('pointerup', up);
+  const FULL = () => snapPx('full');
+  const MIN = () => snapPx('peek');
+  let mode = null;                       // null | 'sheet' | 'scroll'
+  let startY = 0, startH = 0, startScroll = 0, lastY = 0, lastT = 0, vel = 0, fromGrip = false;
+
+  function begin(y, viaGrip) {
+    startY = lastY = y;
+    startH = sheetPx;
+    startScroll = content.scrollTop;
+    vel = 0; lastT = performance.now();
+    fromGrip = !!viaGrip;
+    mode = viaGrip ? 'sheet' : null;
+    if (mode === 'sheet') sheet.classList.add('dragging');
+  }
+  function move(y) {
+    const dy = startY - y;               // > 0 = nach oben gezogen
+    if (mode === null) {
+      if (Math.abs(dy) < 4) return false;
+      mode = (dy > 0 ? startH < FULL() - 1 : content.scrollTop <= 0) ? 'sheet' : 'scroll';
+      if (mode === 'sheet') sheet.classList.add('dragging');
+    }
+    if (mode !== 'sheet') return false;
+    const now = performance.now();
+    if (now > lastT) { vel = (lastY - y) / (now - lastT); lastT = now; }
+    lastY = y;
+    const room = FULL() - startH;        // Weg, den die Schublade noch aufhat
+    if (dy >= 0) {
+      if (dy <= room) { applyHeight(startH + dy); content.scrollTop = startScroll; }
+      else { applyHeight(FULL()); content.scrollTop = startScroll + (dy - room); }
+    } else {
+      const rest = startScroll + dy;
+      if (rest >= 0) { content.scrollTop = rest; }
+      else { content.scrollTop = 0; applyHeight(Math.max(MIN(), startH + rest)); }
+    }
+    return true;
+  }
+  function end() {
+    if (mode === 'sheet') {
       sheet.classList.remove('dragging');
-      const targets = [['peek', SNAPS.peek], ['half', SNAPS.half], ['full', SNAPS.full()]];
-      targets.sort((a, b) => Math.abs(a[1] - curH) - Math.abs(b[1] - curH));
-      setSnap(targets[0][0]);
+      if (fromGrip && Math.abs(startY - lastY) < 5) {   // Tipp auf den Griff
+        setSnap(snap === 'full' ? 'peek' : 'full');
+      } else {
+        const v = Math.max(-1.6, Math.min(1.6, vel));   // Schwung einrechnen
+        const proj = sheetPx + v * 130;
+        let best = SNAP_ORDER[0], bd = Infinity;
+        for (const n of SNAP_ORDER) {
+          const d = Math.abs(snapPx(n) - proj);
+          if (d < bd) { bd = d; best = n; }
+        }
+        snap = best;
+        applyHeight(snapPx(best));
+        if (best === 'peek') content.scrollTop = 0;
+      }
+    }
+    mode = null;
+  }
+
+  content.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) begin(e.touches[0].clientY, false);
+  }, { passive: true });
+  content.addEventListener('touchmove', e => {
+    if (e.touches.length !== 1) return;
+    if (move(e.touches[0].clientY) && e.cancelable) e.preventDefault();
+  }, { passive: false });
+  content.addEventListener('touchend', end);
+  content.addEventListener('touchcancel', end);
+
+  grip.addEventListener('touchstart', e => begin(e.touches[0].clientY, true), { passive: true });
+  grip.addEventListener('touchmove', e => {
+    move(e.touches[0].clientY);
+    if (e.cancelable) e.preventDefault();
+  }, { passive: false });
+  grip.addEventListener('touchend', end);
+  grip.addEventListener('touchcancel', end);
+
+  // Maus / Trackpad
+  grip.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') return;
+    begin(e.clientY, true);
+    grip.setPointerCapture(e.pointerId);
+    const mv = ev => move(ev.clientY);
+    const up = () => {
+      grip.removeEventListener('pointermove', mv);
+      grip.removeEventListener('pointerup', up);
+      end();
     };
-    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointermove', mv);
     grip.addEventListener('pointerup', up);
   });
 
-  // Natives Gefühl: Am Inhaltsende weiterscrollen -> Schublade ganz auf;
-  // oben angekommen weiter nach unten ziehen -> Schublade ganz zu.
-  let lastAuto = 0;
-  const expandIfBottom = () => {
-    if (snap === 'full') return;
-    if (content.scrollTop + content.clientHeight >= content.scrollHeight - 6) {
-      const now = Date.now();
-      if (now - lastAuto < 500) return;
-      lastAuto = now;
-      setSnap('full');
-    }
-  };
-  content.addEventListener('scroll', expandIfBottom);
-  let tY = null, tTop = 0, tDone = false;
-  content.addEventListener('touchstart', e => {
-    tY = e.touches[0].clientY; tTop = content.scrollTop; tDone = false;
-  }, { passive: true });
-  content.addEventListener('touchmove', e => {
-    if (tDone || tY === null) return;
-    const dy = e.touches[0].clientY - tY;
-    if (tTop <= 0 && content.scrollTop <= 0 && dy > 32 && snap !== 'peek') {
-      tDone = true; lastAuto = Date.now(); setSnap('peek');
-    } else if (dy < -32 && snap === 'peek') {
-      tDone = true; setSnap('full');
-    }
-  }, { passive: true });
+  let wheelTimer = null;
   content.addEventListener('wheel', e => {
-    if (content.scrollTop <= 0 && e.deltaY < -12 && snap !== 'peek') { lastAuto = Date.now(); setSnap('peek'); }
-  }, { passive: true });
+    const down = e.deltaY > 0;           // Rad nach unten = „nach oben ziehen“
+    if (down && sheetPx < FULL() - 1) applyHeight(Math.min(FULL(), sheetPx + e.deltaY));
+    else if (!down && content.scrollTop <= 0 && sheetPx > MIN()) applyHeight(Math.max(MIN(), sheetPx + e.deltaY));
+    else return;
+    e.preventDefault();
+    sheet.classList.add('dragging');
+    clearTimeout(wheelTimer);
+    wheelTimer = setTimeout(() => {
+      sheet.classList.remove('dragging');
+      let best = SNAP_ORDER[0], bd = Infinity;
+      for (const n of SNAP_ORDER) {
+        const d = Math.abs(snapPx(n) - sheetPx);
+        if (d < bd) { bd = d; best = n; }
+      }
+      snap = best; applyHeight(snapPx(best));
+      if (best === 'peek') content.scrollTop = 0;
+    }, 150);
+  }, { passive: false });
+
+  window.addEventListener('resize', () => applyHeight(snapPx(snap)));
 })();
 
 /* ================= Ansichten ================= */
@@ -689,7 +922,7 @@ function rowVotes(id) {
   return `<span class="rowstars">${up ? icon('thumbUp') + ' ' + up : ''}${up && down ? ' · ' : ''}${down ? icon('thumbDown') + ' ' + down : ''}</span>`;
 }
 
-function showOverview() {
+function renderOverview(fly) {
   resetStyles();
   let h = `<h1>Highlands-Reise 2026</h1>
     <p class="sub">West Highland Way · Cape Wrath Trail · 21.08.–01.09.2026</p>
@@ -722,6 +955,7 @@ function showOverview() {
   content.scrollTop = 0;
   renderOfflineRow();
   setSnap('peek');
+  fitAll(fly);
 }
 
 function transitCard(n) {
@@ -752,28 +986,23 @@ window.setVote = (id, v) => {
   if (el) el.outerHTML = voteRow(id);
 };
 
-let lastView = '';
-function showStage(id) {
+function renderStage(id, fly) {
   const entry = stageLayers[id];
   if (!entry) return;
   const s = entry.stage, key = entry.trailKey, t = TRAILS[key];
-  const sameView = lastView === 'stage';
   if (snap === 'peek') setSnap('half');
-  focusStage(id, sameView);
-  lastView = 'stage';
+  focusStage(id, fly);
   const start = s.coords[0], end = s.coords[s.coords.length - 1];
   const atStart = nearbyLines(start), atEnd = nearbyLines(end);
   const notes = (TRANSIT.stageNotes || {})[id] || [];
-  const prev = t.stages[entry.index - 1], next = t.stages[entry.index + 1];
   const info = (window.STAGE_INFO || {})[id] || {};
   const camps = (window.CAMPS || []).filter(c => c.stage === id);
 
   let h = `<div class="topline">
-      <button class="backbtn" onclick="showOverview()" title="Zur Übersicht">${icon('arrowLeft')}</button>
-      <span class="chip" style="background:${TRAIL_COLORS[key]}1a;color:${TRAIL_COLORS[key]}">${esc(s.name.includes('(') ? s.name.split('(')[0].trim() : s.name)}</span>
+      ${backBtn()}
+      <span class="chip" style="background:${TRAIL_COLORS[key]}1a;color:${TRAIL_COLORS[key]}">${esc(shortStageName(s))}</span>
       <span class="spacer"></span>
-      <button class="backbtn" ${prev ? `onclick="showStage('${prev.id}')" title="Vorherige Etappe"` : 'disabled'}>${icon('chevLeft')}</button>
-      <button class="backbtn" ${next ? `onclick="showStage('${next.id}')" title="Nächste Etappe"` : 'disabled'}>${icon('chevRight')}</button>
+      <span class="chip">${esc(t.title)}</span>
     </div>
     <h1>${esc(s.from)} → ${esc(s.to)}</h1>
     <div class="statgrid">
@@ -784,7 +1013,7 @@ function showStage(id) {
   if (info.text) h += `<p class="stagetext">${esc(info.text)}</p>`;
   if (info.photos && info.photos.length) {
     h += `<div class="photos">` + info.photos.map((p, i) =>
-      `<figure onclick="openLightbox('${id}',${i})"><img loading="lazy" src="${p.url}" alt=""><figcaption>${esc(p.credit || '')}</figcaption></figure>`).join('') + `</div>`;
+      `<figure onclick="openLightbox('${id}',${i})"><img loading="lazy" src="${p.url}" alt="" title="${esc(p.credit || '')}"></figure>`).join('') + `</div>`;
   }
   h += voteRow(id);
   if (notes.length) h += notes.map(n => `<div class="note">${icon('info')}<div>${esc(n)}</div></div>`).join('');
@@ -807,11 +1036,15 @@ function showStage(id) {
   h += `<h2>Anbindung am Ziel · ${esc(s.to)}</h2>`;
   h += atEnd.length ? atEnd.map(transitCard).join('') : `<div class="note">${icon('info')}<div>Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div></div>`;
   content.innerHTML = h;
-  if (!sameView) content.scrollTop = 0;
+  content.scrollTop = 0;
 }
 window.zoomCamp = (lat, lng) => {
   map.stop();
   map.flyTo([lat, lng], 14, { duration: 0.7 });
+};
+window.zoomStop = (lat, lng) => {
+  map.stop();
+  map.flyTo([lat, lng], 12, { duration: 0.7 });
 };
 
 /* ---------- Foto-Großansicht ---------- */
@@ -821,8 +1054,10 @@ window.openLightbox = (stageId, idx) => {
   const photos = ((window.STAGE_INFO || {})[stageId] || {}).photos || [];
   if (!photos.length) return;
   const track = document.getElementById('lbTrack');
+  // Offline ist ggf. nur die 640px-Fassung im Cache -> darauf zurückfallen.
   track.innerHTML = photos.map(p => `
-    <figure><img loading="lazy" src="${p.big || p.url}" alt="">
+    <figure><img loading="lazy" src="${p.big || p.url}" alt=""
+        onerror="if(this.src!==this.dataset.fb){this.src=this.dataset.fb}" data-fb="${p.url}">
       <figcaption>${esc(p.credit || '')}</figcaption></figure>`).join('');
   lb.hidden = false;
   const fig = track.children[idx];
@@ -831,15 +1066,14 @@ window.openLightbox = (stageId, idx) => {
 document.getElementById('lbClose').addEventListener('click', () => { lb.hidden = true; });
 lb.addEventListener('click', e => { if (e.target === lb || e.target.tagName === 'FIGURE') lb.hidden = true; });
 
-function showLine(id) {
+function renderLine(id) {
   const g = lineLayers[id];
   if (!g) return;
   const ln = g.data;
   if (snap === 'peek') setSnap('half');
-  focusLine(id);
-  lastView = 'line';
+  focusLine(id, true);
   let h = `<div class="topline">
-      <button class="backbtn" onclick="showOverview()" title="Zur Übersicht">${icon('arrowLeft')}</button>
+      ${backBtn()}
       <span class="kicon" style="background:${ln.color};width:26px;height:26px">${KIND_ICON[ln.kind]}</span>
       <span class="chip days">${esc(ln.days)}</span>
       <span class="spacer"></span>
@@ -848,6 +1082,7 @@ function showLine(id) {
     <h1>${esc(ln.name)}</h1>
     <p class="sub">${esc(ln.sub)}</p>`;
   if (ln.warns) h += ln.warns.map(w => `<div class="note warn">${icon('warn')}<div>${esc(w)}</div></div>`).join('');
+  h += stopsHtml(ln);
   for (const tb of (ln.tables || [])) {
     h += `<div class="tt-title">${esc(tb.title)}</div><table class="tt">`;
     if (tb.head && tb.head.some(x => x)) {
@@ -864,21 +1099,206 @@ function showLine(id) {
     h += `<h2>Telefon</h2>` + ln.phones.map(p =>
       `<a class="telbtn" href="tel:${p.tel.replace(/\s/g, '')}">${icon('phone')} ${esc(p.label)}: ${esc(p.tel)}</a>`).join('');
   }
-  h += `<h2>Halte</h2>` + ln.stops.map(s => `
-    <div class="row" style="cursor:default">
-      <div class="num" style="background:#fff;border:2.5px solid ${ln.color};color:${ln.color};width:14px;height:14px;margin:0 8px"></div>
-      <div class="grow"><div class="t" style="font-weight:400">${esc(s.name)}</div></div>
-    </div>`).join('');
   content.innerHTML = h;
   content.scrollTop = 0;
 }
 
-document.getElementById('brand').addEventListener('click', () => { showOverview(); fitAll(); });
-function fitAll() {
+/* ---------- Linienverlauf im Bahn-/Bus-Stil ----------
+   Die früher separate Liste „Halte“ ist hier aufgegangen: Sie zeigt jetzt
+   zusätzlich die ausgelassenen Zwischenhalte und die Etappen am Halt. */
+const stageNearCache = {};
+function stagesNearPoint(pt, maxKm) {
+  const res = [];
+  for (const s of allStages) {
+    const c = s.coords, step = Math.max(1, Math.floor(c.length / 350));
+    let best = Infinity;
+    for (let i = 0; i < c.length; i += step) {
+      const d = haversineKm(pt, c[i]);
+      if (d < best) best = d;
+    }
+    if (best <= maxKm) res.push({ stage: s, d: best });
+  }
+  return res.sort((a, b) => a.d - b.d).slice(0, 4);
+}
+function stagesAtStop(stop) {
+  const k = stop.lat + ',' + stop.lng;
+  if (!stageNearCache[k]) stageNearCache[k] = stagesNearPoint([stop.lat, stop.lng], 4);
+  return stageNearCache[k];
+}
+function gapText(g) {
+  if (g.label) return g.label;
+  if (g.n) return g.n + (g.n === 1 ? ' Halt nicht aufgeführt' : ' Halte nicht aufgeführt');
+  return 'weitere Halte';
+}
+function stopsHtml(ln) {
+  let h = `<h2>Linienverlauf</h2><div class="stops" style="--lc:${ln.color}">`;
+  for (const stop of ln.stops) {
+    if (stop.gap) {
+      h += `<div class="skip"><span>${esc(gapText(stop.gap))}` +
+           `${stop.gap.names ? ' · ' + esc(stop.gap.names) : ''}</span></div>`;
+    }
+    const near = stagesAtStop(stop);
+    h += `<div class="st${stop.hub ? ' hub' : ''}" onclick="zoomStop(${stop.lat},${stop.lng})">
+      <span class="dot"></span>
+      <div class="nm">${esc(stop.name)}</div>`;
+    if (near.length) {
+      h += `<div class="stagechips">` + near.map(n => {
+        const col = TRAIL_COLORS[stageLayers[n.stage.id].trailKey];
+        const dl = n.d < 0.35 ? 'direkt' : fmt(Math.round(n.d * 10) / 10) + ' km';
+        return `<span class="stagechip" style="background:${col}1a;color:${col}"
+          onclick="event.stopPropagation();showStage('${n.stage.id}')"
+          title="${esc(n.stage.from)} → ${esc(n.stage.to)}">${esc(shortStageName(n.stage))} <small>${dl}</small></span>`;
+      }).join('') + `</div>`;
+    }
+    h += `</div>`;
+  }
+  return h + `</div>`;
+}
+
+/* ================= Navigation zwischen den Ansichten ================= */
+const stageIndex = {};
+allStages.forEach((s, i) => { stageIndex[s.id] = i; });
+const shortStageName = s => (s.name.includes('(') ? s.name.split('(')[0].trim() : s.name);
+
+let view = null;
+const viewStack = [];
+function renderView(v) {
+  const prev = view;
+  view = v;
+  if (v.t === 'stage') renderStage(v.id, !!prev);
+  else if (v.t === 'line') renderLine(v.id);
+  else renderOverview(!!prev);
+  updateStageNav();
+}
+function go(v) {
+  if (view && !(view.t === v.t && view.id === v.id)) viewStack.push(view);
+  if (viewStack.length > 40) viewStack.shift();
+  renderView(v);
+}
+window.showStage = id => go({ t: 'stage', id });
+window.showLine = id => go({ t: 'line', id });
+window.showOverview = () => go({ t: 'overview' });
+window.goBack = () => renderView(viewStack.pop() || { t: 'overview' });
+function backBtn() {
+  const p = viewStack[viewStack.length - 1];
+  const label = !p || p.t === 'overview' ? 'Zur Übersicht'
+    : p.t === 'stage' ? 'Zurück zu ' + esc(shortStageName(stageLayers[p.id].stage))
+    : 'Zurück zu ' + esc(lineLayers[p.id].data.name);
+  return `<button class="backbtn" onclick="goBack()" title="${label}">${icon('arrowLeft')}</button>`;
+}
+/* Nur die Hervorhebung neu setzen, ohne die Karte zu bewegen. */
+function refocus() {
+  if (!view || view.t === 'overview') { resetStyles(); return; }
+  if (view.t === 'stage') focusStage(view.id, false, true);
+  else focusLine(view.id, false, true);
+}
+
+/* Vor/Zurück durchläuft alle Etappen – über das Trail-Ende hinaus direkt
+   weiter zum nächsten Trail (WHW-Ziel → erste CWT-Etappe). */
+const stagenav = document.getElementById('stagenav');
+function updateStageNav() {
+  if (!view || view.t !== 'stage') { stagenav.hidden = true; stagenav.innerHTML = ''; return; }
+  const i = stageIndex[view.id], curTrail = stageLayers[view.id].trailKey;
+  const mk = (s, dir) => {
+    if (!s) return '<span></span>';
+    const tk = stageLayers[s.id].trailKey;
+    const sub = tk !== curTrail ? TRAILS[tk].title : (dir === 'prev' ? s.from : s.to);
+    return `<button class="navbtn ${dir}" onclick="showStage('${s.id}')" title="${esc(s.from)} → ${esc(s.to)}">
+      ${dir === 'prev' ? icon('chevLeft') : ''}
+      <span class="tx"><b>${esc(shortStageName(s))}</b><small>${esc(sub)}</small></span>
+      ${dir === 'next' ? icon('chevRight') : ''}
+    </button>`;
+  };
+  stagenav.innerHTML = mk(allStages[i - 1], 'prev') + mk(allStages[i + 1], 'next');
+  stagenav.hidden = false;
+}
+
+document.getElementById('brand').addEventListener('click', () => {
+  viewStack.length = 0;
+  renderView({ t: 'overview' });
+});
+function fitAll(fly) {
   const b = L.latLngBounds([]);
   for (const id in stageLayers) b.extend(stageLayers[id].line.getBounds());
-  fitWithSheet(b);
+  fitWithSheet(b, fly);
 }
+/* Zoom auf die aktuelle Auswahl zurücksetzen */
+document.getElementById('fitBtn').innerHTML =
+  '<svg class="ic" style="width:19px;height:19px" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+  'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+  '<path d="M9 3.75H4.5A.75.75 0 0 0 3.75 4.5V9M15 3.75h4.5a.75.75 0 0 1 .75.75V9' +
+  'M9 20.25H4.5a.75.75 0 0 1-.75-.75V15M15 20.25h4.5a.75.75 0 0 0 .75-.75V15"/>' +
+  '<rect x="8.25" y="8.25" width="7.5" height="7.5" rx="1.2"/></svg>';
+document.getElementById('fitBtn').addEventListener('click', () => {
+  if (view && view.t === 'stage') fitWithSheet(stageLayers[view.id].line.getBounds(), true);
+  else if (view && view.t === 'line') fitWithSheet(lineBounds(view.id), true);
+  else fitAll(true);
+});
+
+/* ================= Kartenlegende =================
+   Bewusst komplett inline gebaut (kein externes Bild) – damit sie auch
+   offline funktioniert. Erklärt die eigenen Overlays und die wichtigsten
+   Signaturen der topografischen Karte (OpenTopoMap). */
+const LEGEND_TOPO = [
+  ['line', '#c8a165', 'Höhenlinien (10 m; jede 5. dicker mit Höhenangabe)', 1],
+  ['patch', '#d9d0c3', 'Fels, Schutt und Geröll (graubraune Schraffur)'],
+  ['patch', '#aed1a0', 'Wald'],
+  ['patch', '#c8e0a8', 'Gebüsch, Heide, Moorland'],
+  ['patch', '#a8d2e2', 'Wasser: Loch, Fluss, Küste'],
+  ['patch', '#e0e0d8', 'Sumpf/Moor (blaue Wellenschraffur)'],
+  ['line', '#e892a2', 'Fernstraße (A-Road, rosa/rot)', 3],
+  ['line', '#f7c94b', 'Landstraße (B-Road, gelb)', 3],
+  ['line', '#ffffff', 'Nebenstraße (weiß mit grauem Rand)', 3],
+  ['dash', '#8b6a4f', 'Wirtschaftsweg / Track (braun gestrichelt)', 2],
+  ['dash', '#c0392b', 'Fuß- und Wanderweg (rot gestrichelt)', 1.6],
+  ['line', '#555555', 'Bahnstrecke (schwarz mit Querstrichen)', 2],
+  ['dash', '#999999', 'Stromleitung (mit Mastpunkten)', 1.2],
+  ['ico', '▲', 'Gipfel mit Höhe · ⛺ Campingplatz · ⌂ Hütte/Bothy'],
+  ['ico', '◈', 'Aussichtspunkt · ⚑ Sehenswürdigkeit · P Parkplatz'],
+  ['ico', '≈', 'Furt · ⌇ Quelle · ⛰ Klippe / Steilkante']
+];
+function legendSwatch(kind, color, w) {
+  if (kind === 'patch') return `<span class="lgpatch" style="background:${color};border:1px solid rgba(0,0,0,.15)"></span>`;
+  if (kind === 'ico') return `<span style="font-size:14px;color:var(--muted)">${color}</span>`;
+  const dash = kind === 'dash' ? 'border-top-style:dashed' : '';
+  return `<span class="lgline" style="border-top-width:${w || 2}px;border-top-color:${color};${dash};` +
+         `box-shadow:${color === '#ffffff' ? '0 0 0 1px #bbb' : 'none'}"></span>`;
+}
+function legendHtml() {
+  const row = (sw, txt) => `<div class="lgitem"><span class="sw">${sw}</span><span>${esc(txt)}</span></div>`;
+  let h = `<div class="lgtop"><h1>Kartenlegende</h1>
+      <button class="backbtn" onclick="closeLegend()" title="Schließen">${icon('close')}</button></div>`;
+  h += `<h2>Route &amp; Etappen</h2>`;
+  for (const k of Object.keys(TRAILS)) {
+    h += row(legendSwatch('line', TRAIL_COLORS[k], 5), TRAILS[k].title);
+  }
+  h += row(`<span style="width:11px;height:11px;border-radius:50%;background:${TRAIL_COLORS.whw};border:2px solid #fff;box-shadow:0 0 0 1px #bbb"></span>`,
+    'Etappenstart/-ziel (angetippt öffnet die Etappe)');
+  h += `<h2>Übernachten</h2>`;
+  for (const k in CAMP_TYPES) {
+    const t = CAMP_TYPES[k];
+    h += row(`<span class="campicon" style="background:${t.color};display:inline-flex">${icon(t.icon)}</span>`, t.label);
+  }
+  h += `<h2>Bahn, Bus &amp; Fähren</h2>`;
+  h += row(legendSwatch('line', '#3f4d55', 3), 'Bahnlinie');
+  h += row(legendSwatch('line', '#3c6e9e', 3), 'Buslinie');
+  h += row(legendSwatch('dash', '#4d6a75', 3), 'Fährverbindung (gestrichelt)');
+  h += row(`<span style="width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid #3c6e9e"></span>`,
+    'Halt · größerer Ring = Knotenpunkt');
+  h += `<h2>Topografische Karte (OpenTopoMap)</h2>`;
+  for (const [kind, color, txt, w] of LEGEND_TOPO) h += row(legendSwatch(kind, color, w), txt);
+  h += `<div class="note">${icon('info')}<div>Die topografische Karte kommt online von OpenTopoMap
+    (CC-BY-SA). Ohne Netz erscheint automatisch die offline gespeicherte Vektorkarte darunter –
+    dort zeigen dieselben Symbole Wege, Wasser und Orte, aber ohne Höhenlinien.</div></div>`;
+  return h;
+}
+const legendEl = document.getElementById('legend');
+window.closeLegend = () => { legendEl.hidden = true; };
+document.getElementById('legendBtn').addEventListener('click', () => {
+  document.getElementById('legendCard').innerHTML = legendHtml();
+  legendEl.hidden = false;
+});
+legendEl.addEventListener('click', e => { if (e.target === legendEl) closeLegend(); });
 
 /* ================= Zugang & Bewertungen ================= */
 const GATE = {
@@ -937,7 +1357,10 @@ async function sha256hex(s) {
 })();
 
 /* ================= Offline-Paket & App-Updates ================= */
-const OFF = { state: 'checking', pct: 0, meta: null, size: 0, autoTried: false, err: null };
+const OFF = {
+  state: 'checking', pct: 0, meta: null, size: 0, autoTried: false, err: null,
+  photoDone: 0, photoTotal: 0
+};
 const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const fmtMb = b => Math.round(b / 1048576) + ' MB';
@@ -961,6 +1384,12 @@ function offlineHtml() {
       ${OFF.err ? '<br>Letzter Versuch: ' + esc(OFF.err) : ''}
       <br><button class="offbtn" onclick="downloadPkg()">Jetzt laden (${OFF.meta ? fmtMb(OFF.meta.size) : '~92 MB'})</button></div></div>`;
   }
+  if (OFF.photoTotal) {
+    const all = OFF.photoDone >= OFF.photoTotal;
+    inner += `<div class="offok${all ? '' : ' muted'}">${icon(all ? 'check' : 'download')} ` +
+      `Fotos offline: ${OFF.photoDone} / ${OFF.photoTotal}</div>`;
+  }
+  inner += `<div class="offok muted">${icon('info')} Geländekarte lädt online nach; ohne Netz zeigt die Vektorkarte darunter</div>`;
   if (isIos && !isStandalone) {
     inner += `<div class="offok muted">${icon('install')} Tipp: Teilen → „Zum Home-Bildschirm“ installieren</div>`;
   }
@@ -1077,26 +1506,42 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 }
 window.addEventListener('online', () => { if (OFF.state === 'missing') offlineCheck(); });
 
-/* Etappen-Fotos in den Gerätecache vorladen (für offline) */
+/* Alle Fotos (Etappen UND Unterkünfte) in den Gerätecache vorladen.
+   Bewusst nur die 640px-Fassung: Die 1600px-Großansicht würde den Speicher
+   vervielfachen; ohne Netz fällt die Lightbox automatisch auf 640px zurück. */
+function photoUrls() {
+  const u = [];
+  for (const k in (window.STAGE_INFO || {})) {
+    for (const p of (STAGE_INFO[k].photos || [])) if (p.url) u.push(p.url);
+  }
+  for (const c of (window.CAMPS || [])) {
+    for (const p of (c.photos || [])) if (p.url) u.push(p.url);
+  }
+  return [...new Set(u)];
+}
 async function prefetchPhotos() {
-  if (!('caches' in window) || !navigator.onLine || !window.STAGE_INFO) return;
+  if (!('caches' in window)) return;
+  const urls = photoUrls();
+  OFF.photoTotal = urls.length;
   try {
     const c = await caches.open('photos-v1');
-    for (const k in STAGE_INFO) {
-      for (const p of (STAGE_INFO[k].photos || [])) {
-        if (await c.match(p.url)) continue;
-        try {
-          const r = await fetch(p.url, { mode: 'no-cors' });
-          if (r && (r.ok || r.type === 'opaque')) await c.put(p.url, r);
-        } catch (e) { /* einzelnes Foto egal */ }
-      }
+    let done = 0;
+    for (const url of urls) {
+      if (await c.match(url)) { done++; continue; }
+      if (!navigator.onLine) continue;
+      try {
+        const r = await fetch(url, { mode: 'no-cors' });
+        if (r && (r.ok || r.type === 'opaque')) { await c.put(url, r); done++; }
+      } catch (e) { /* einzelnes Foto egal */ }
+      if (done % 15 === 0) { OFF.photoDone = done; renderOfflineRow(); }
     }
+    OFF.photoDone = done;
+    renderOfflineRow();
   } catch (e) { /* Cache nicht verfügbar */ }
 }
-setTimeout(prefetchPhotos, 4000);
+setTimeout(prefetchPhotos, 3000);
 
-showOverview();
-fitAll();
+renderView({ t: 'overview' });
 offlineCheck();
 </script>
 </body>

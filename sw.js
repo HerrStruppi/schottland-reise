@@ -129,6 +129,23 @@ async function serveTile(z, x, y) {
   }
 }
 
+/* Rasterkachel-Cache begrenzen: undurchsichtige ("opaque") Antworten werden
+   vom Browser mit einem großzügigen Aufschlag auf das Speicherkontingent
+   angerechnet – ohne Deckel würde die Geländekarte das Kontingent sprengen
+   und im schlimmsten Fall das Offline-Paket mitreißen. */
+const RASTER_MAX = 1400;
+let trimming = false;
+async function trimRaster() {
+  if (trimming) return;
+  trimming = true;
+  try {
+    const cache = await caches.open(RASTER_CACHE);
+    const keys = await cache.keys();
+    for (let i = 0; i < keys.length - RASTER_MAX; i++) await cache.delete(keys[i]);
+  } catch (err) { /* egal */ }
+  trimming = false;
+}
+
 /* ---------- Fetch-Routing ---------- */
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
@@ -159,13 +176,18 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Online-Rasterkacheln (OSM/OpenTopoMap): network first, Cache als Fallback
+  // Online-Rasterkacheln (OSM/OpenTopoMap): network first, Cache als Fallback.
+  // OpenTopoMap liefert keine CORS-Header -> die Antwort ist "opaque" und
+  // resp.ok ist false. Trotzdem speichern, sonst wäre die (standardmäßig
+  // aktive) Geländekarte offline komplett leer.
   if (/tile\.openstreetmap\.org|opentopomap\.org/.test(url.host)) {
     e.respondWith((async () => {
       const cache = await caches.open(RASTER_CACHE);
       try {
         const resp = await fetch(e.request);
-        if (resp.ok) cache.put(e.request, resp.clone());
+        if (resp && (resp.ok || resp.type === 'opaque')) {
+          cache.put(e.request, resp.clone()).then(trimRaster);
+        }
         return resp;
       } catch (err) {
         const hit = await cache.match(e.request);
