@@ -83,6 +83,9 @@
   /* Solange die Schublade nicht ganz offen ist, wird nicht der Inhalt,
      sondern die Schublade bewegt (siehe Gesten-Logik unten). */
   #sheet:not(.expanded) #sheetContent { overflow-y: hidden; }
+  /* Während des Wischens wird der Inhalt verschoben – dann darf er nicht
+     gleichzeitig senkrecht scrollen. */
+  #sheetContent.swiping { overflow: hidden; will-change: transform; }
 
   /* ---------- Etappen-Navigation (schwebend über der Schublade) ---------- */
   #stagenav {
@@ -273,13 +276,13 @@
 
   .leaflet-control-attribution { font-size: 9px; }
 
-  /* Auf der kontrastreichen Topo-Karte bekommen alle Overlay-Linien einen
-     feinen weißen Lichtsaum – dadurch bleiben sie filigran, heben sich aber
-     auch im transparenten (nicht selektierten) Zustand klar ab. */
-  body.topo .leaflet-overlay-pane svg {
-    filter: drop-shadow(0 0 1.2px rgba(255,255,255,0.95))
-            drop-shadow(0 0 2.5px rgba(255,255,255,0.65));
-  }
+  /* Kein CSS-filter auf dem Overlay-SVG! drop-shadow zwingt den Browser,
+     die komplette Vektorebene bei JEDEM Animationsframe in einen Offscreen-
+     Puffer zu rastern und zu weichzeichnen – auf dem iPhone führte das beim
+     Zoomen/Fliegen zu Rucklern bis hin zum Absturz. Den weißen Lichtsaum
+     zeichnen wir stattdessen als echte Linie (siehe styleStage/styleLine):
+     die unsichtbaren Klick-Linien sind ohnehin schon da und werden im
+     Topo-Modus einfach weiß eingefärbt. Kostet null zusätzliche Pfade. */
   body.topo .leaflet-tooltip.wpt-label, body.topo .leaflet-tooltip.stop-label {
     background: rgba(255,255,255,0.97); box-shadow: 0 1px 3px rgba(0,0,0,0.45);
   }
@@ -636,8 +639,10 @@ const wptMarkers = [];    // Etappenpunkte (werden im Linien-Modus ausgeblendet)
 for (const key of Object.keys(TRAILS)) {
   const color = TRAIL_COLORS[key] || '#333';
   TRAILS[key].stages.forEach((s, i) => {
-    const line = L.polyline(s.coords, { color, weight: 5, opacity: 0.9 }).addTo(map);
+    // Reihenfolge zählt: Die breite Linie zuerst, damit sie im Topo-Modus als
+    // weißer Saum UNTER der farbigen Linie liegt (und nicht darüber).
     const hit = L.polyline(s.coords, { color: '#000', weight: 24, opacity: 0.001 }).addTo(map);
+    const line = L.polyline(s.coords, { color, weight: 5, opacity: 0.9 }).addTo(map);
     hit.on('click', ev => { L.DomEvent.stopPropagation(ev); showStage(s.id); });
     line.on('click', ev => { L.DomEvent.stopPropagation(ev); showStage(s.id); });
     stageLayers[s.id] = { line, hit, stage: s, trailKey: key, index: i };
@@ -666,8 +671,8 @@ for (const ln of TRANSIT.lines) {
   const group = { lines: [], stops: [], pill: null, data: ln };
   const paths = [ln.coords].concat(ln.coordsAlt ? [ln.coordsAlt] : []);
   for (const pts of paths) {
-    const l = L.polyline(pts, { color: ln.color, weight: 2.2, opacity: 0.75, dashArray: dash }).addTo(map);
     const hit = L.polyline(pts, { color: '#000', weight: 16, opacity: 0.001 }).addTo(map);
+    const l = L.polyline(pts, { color: ln.color, weight: 2.2, opacity: 0.75, dashArray: dash }).addTo(map);
     hit.on('click', ev => { L.DomEvent.stopPropagation(ev); showLine(ln.id); });
     l.on('click', ev => { L.DomEvent.stopPropagation(ev); showLine(ln.id); });
     group.lines.push(l, hit);
@@ -777,44 +782,53 @@ function nearbyLines(pt, maxKm = 5) {
 }
 
 /* Strichstärken und Deckkraft. Auf der kontrastreichen Topo-Karte etwas
-   kräftiger, damit die Linien auch abgeblendet noch gut lesbar bleiben –
-   den weißen Lichtsaum liefert zusätzlich die CSS-Regel `body.topo`. */
+   kräftiger, damit die Linien auch abgeblendet noch gut lesbar bleiben. */
 function ST() {
   return topoOn
     ? { stage: 0.95, stageDim: 0.5,  stageW: 5, stageSelW: 7.5, line: 0.9,  lineDim: 0.34, lineW: 2.8, lineSelW: 4.5 }
     : { stage: 0.9,  stageDim: 0.25, stageW: 5, stageSelW: 7,   line: 0.75, lineDim: 0.12, lineW: 2.2, lineSelW: 4 };
 }
-function resetStyles() {
-  const s = ST();
-  document.body.classList.remove('line-focus');
-  for (const id in stageLayers) stageLayers[id].line.setStyle({ opacity: s.stage, weight: s.stageW });
-  for (const id in lineLayers) lineLayers[id].lines.forEach((l, i) => {
-    if (i % 2 === 0) l.setStyle({ opacity: s.line, weight: s.lineW });
+/* Die zweite, unsichtbare Linie jedes Elements ist im Vektor-Modus reine
+   Klickfläche und im Topo-Modus zusätzlich der weiße Lichtsaum. */
+function styleStage(id, mode) {
+  const s = ST(), e = stageLayers[id];
+  const op = mode === 'sel' ? 1 : mode === 'dim' ? s.stageDim : s.stage;
+  const w = mode === 'sel' ? s.stageSelW : s.stageW;
+  e.line.setStyle({ opacity: op, weight: w });
+  e.hit.setStyle(topoOn
+    ? { color: '#fff', weight: w + 8, opacity: 0.6 * op }
+    : { color: '#000', weight: 24, opacity: 0.001 });
+}
+function styleLine(id, mode) {
+  const s = ST(), g = lineLayers[id];
+  const op = mode === 'sel' ? 1 : mode === 'dim' ? s.lineDim : s.line;
+  const w = mode === 'sel' ? s.lineSelW : s.lineW;
+  g.lines.forEach((l, i) => {
+    if (i % 2 === 0) l.setStyle({ opacity: op, weight: w });
+    else l.setStyle(topoOn
+      ? { color: '#fff', weight: w + 6, opacity: 0.55 * op }
+      : { color: '#000', weight: 16, opacity: 0.001 });
   });
+}
+function resetStyles() {
+  document.body.classList.remove('line-focus');
+  for (const id in stageLayers) styleStage(id, 'normal');
+  for (const id in lineLayers) styleLine(id, 'normal');
   wptMarkers.forEach(m => m.setStyle({ opacity: 1, fillOpacity: 1 }));
 }
 
 function focusStage(id, fly, noFit) {
-  const s = ST();
-  resetStyles();
-  for (const sid in stageLayers) {
-    if (sid !== id) stageLayers[sid].line.setStyle({ opacity: s.stageDim });
-  }
-  const sel = stageLayers[id];
-  sel.line.setStyle({ opacity: 1, weight: s.stageSelW });
-  if (!noFit) fitWithSheet(sel.line.getBounds(), fly);
+  document.body.classList.remove('line-focus');
+  for (const sid in stageLayers) styleStage(sid, sid === id ? 'sel' : 'dim');
+  for (const lid in lineLayers) styleLine(lid, 'normal');
+  wptMarkers.forEach(m => m.setStyle({ opacity: 1, fillOpacity: 1 }));
+  if (!noFit) fitWithSheet(stageLayers[id].line.getBounds(), fly);
 }
 function focusLine(id, fly, noFit) {
-  const s = ST();
-  resetStyles();
   document.body.classList.add('line-focus');
   wptMarkers.forEach(m => m.setStyle({ opacity: 0, fillOpacity: 0 }));
-  for (const sid in stageLayers) stageLayers[sid].line.setStyle({ opacity: s.stageDim + 0.05 });
-  for (const lid in lineLayers) {
-    if (lid !== id) lineLayers[lid].lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: s.lineDim }); });
-  }
-  const g = lineLayers[id];
-  g.lines.forEach((l, i) => { if (i % 2 === 0) l.setStyle({ opacity: 1, weight: s.lineSelW }); });
+  for (const sid in stageLayers) styleStage(sid, 'dim');
+  for (const lid in lineLayers) styleLine(lid, lid === id ? 'sel' : 'dim');
   if (!noFit) fitWithSheet(lineBounds(id), fly);
 }
 function lineBounds(id) {
@@ -875,6 +889,11 @@ function setSnap(s) {
   applyHeight(snapPx(s));
   if (s === 'peek') content.scrollTop = 0;
 }
+/* Sobald die Schublade einmal von Hand eingestellt wurde, fasst die
+   Navigation ihre Höhe nicht mehr an – eine selbst gewählte Größe soll
+   beim Blättern zwischen Etappen erhalten bleiben. */
+let snapLocked = false;
+function maybeSnap(s) { if (!snapLocked) setSnap(s); }
 function sheetHeight() { return sheetPx; }
 applyHeight(sheetPx);
 
@@ -882,24 +901,44 @@ applyHeight(sheetPx);
   const grip = document.getElementById('grip');
   const FULL = () => snapPx('full');
   const MIN = () => snapPx('peek');
-  let mode = null;                       // null | 'sheet' | 'scroll'
-  let startY = 0, startH = 0, startScroll = 0, lastY = 0, lastT = 0, vel = 0, fromGrip = false;
+  let mode = null;                       // null | 'sheet' | 'scroll' | 'swipe'
+  let startY = 0, startX = 0, startH = 0, startScroll = 0, lastY = 0, lastT = 0, vel = 0;
+  let fromGrip = false, swipeOk = false, dx = 0, swipeBusy = false;
 
-  function begin(y, viaGrip) {
+  function begin(y, viaGrip, x, target) {
     startY = lastY = y;
+    startX = x || 0;
     startH = sheetPx;
     startScroll = content.scrollTop;
-    vel = 0; lastT = performance.now();
+    vel = 0; dx = 0; lastT = performance.now();
     fromGrip = !!viaGrip;
+    /* Waagerecht wischen blättert durch die Etappen – aber nur, wenn an der
+       Stelle nicht schon etwas anderes waagerecht scrollt (Fotostreifen,
+       Fahrplantabelle, Telefonnummern-Reihe). Das hat Vorrang. */
+    swipeOk = !viaGrip && !swipeBusy && view && view.t === 'stage' &&
+      !(target && target.closest && target.closest('.photos, table.tt, .telrow, .stagechips'));
     mode = viaGrip ? 'sheet' : null;
     if (mode === 'sheet') sheet.classList.add('dragging');
   }
-  function move(y) {
+  function move(y, x) {
     const dy = startY - y;               // > 0 = nach oben gezogen
+    const ddx = (x || 0) - startX;
     if (mode === null) {
-      if (Math.abs(dy) < 4) return false;
-      mode = (dy > 0 ? startH < FULL() - 1 : content.scrollTop <= 0) ? 'sheet' : 'scroll';
-      if (mode === 'sheet') sheet.classList.add('dragging');
+      if (swipeOk && Math.abs(ddx) > 10 && Math.abs(ddx) > Math.abs(dy) * 1.4) {
+        mode = 'swipe';
+        content.classList.add('swiping');
+      } else if (Math.abs(dy) >= 4) {
+        mode = (dy > 0 ? startH < FULL() - 1 : content.scrollTop <= 0) ? 'sheet' : 'scroll';
+        if (mode === 'sheet') sheet.classList.add('dragging');
+      } else return false;
+    }
+    if (mode === 'swipe') {
+      const i = stageIndex[view.id];
+      const blocked = (ddx > 0 && !allStages[i - 1]) || (ddx < 0 && !allStages[i + 1]);
+      dx = blocked ? ddx * 0.25 : ddx;   // an den Enden zäher Widerstand
+      content.style.transform = `translateX(${dx}px)`;
+      content.style.opacity = String(Math.max(0.35, 1 - Math.abs(dx) / 320));
+      return true;
     }
     if (mode !== 'sheet') return false;
     const now = performance.now();
@@ -917,7 +956,16 @@ applyHeight(sheetPx);
     return true;
   }
   function end() {
+    if (mode === 'swipe') {
+      const i = stageIndex[view.id];
+      const target = dx > 0 ? allStages[i - 1] : allStages[i + 1];
+      if (Math.abs(dx) > 55 && target) swipeTo(target.id, dx > 0 ? 1 : -1);
+      else { content.classList.remove('swiping'); content.style.transform = ''; content.style.opacity = ''; }
+      mode = null;
+      return;
+    }
     if (mode === 'sheet') {
+      snapLocked = true;
       sheet.classList.remove('dragging');
       if (fromGrip && Math.abs(startY - lastY) < 5) {   // Tipp auf den Griff
         setSnap(snap === 'full' ? 'peek' : 'full');
@@ -937,12 +985,35 @@ applyHeight(sheetPx);
     mode = null;
   }
 
+  /* Etappenwechsel per Wisch, mit Bewegung in Wischrichtung */
+  function swipeTo(id, dir) {
+    swipeBusy = true;
+    const w = content.clientWidth + 40;
+    content.style.transition = 'transform 0.16s ease-out, opacity 0.16s ease-out';
+    content.style.transform = `translateX(${dir * w}px)`;
+    content.style.opacity = '0';
+    setTimeout(() => {
+      content.style.transition = 'none';
+      content.style.transform = `translateX(${-dir * w}px)`;
+      showStage(id);                       // ersetzt den Inhalt
+      content.offsetHeight;                // Reflow erzwingen, sonst kein Übergang
+      content.style.transition = 'transform 0.22s cubic-bezier(.32,.72,0,1), opacity 0.22s';
+      content.style.transform = 'translateX(0)';
+      content.style.opacity = '1';
+      setTimeout(() => {
+        content.classList.remove('swiping');
+        content.style.transition = ''; content.style.transform = ''; content.style.opacity = '';
+        swipeBusy = false;
+      }, 240);
+    }, 160);
+  }
+
   content.addEventListener('touchstart', e => {
-    if (e.touches.length === 1) begin(e.touches[0].clientY, false);
+    if (e.touches.length === 1) begin(e.touches[0].clientY, false, e.touches[0].clientX, e.target);
   }, { passive: true });
   content.addEventListener('touchmove', e => {
     if (e.touches.length !== 1) return;
-    if (move(e.touches[0].clientY) && e.cancelable) e.preventDefault();
+    if (move(e.touches[0].clientY, e.touches[0].clientX) && e.cancelable) e.preventDefault();
   }, { passive: false });
   content.addEventListener('touchend', end);
   content.addEventListener('touchcancel', end);
@@ -979,6 +1050,7 @@ applyHeight(sheetPx);
     e.preventDefault();
     sheet.classList.add('dragging');
     clearTimeout(wheelTimer);
+    snapLocked = true;
     wheelTimer = setTimeout(() => {
       sheet.classList.remove('dragging');
       let best = SNAP_ORDER[0], bd = Infinity;
@@ -1056,7 +1128,7 @@ function renderOverview(fly) {
   content.innerHTML = h;
   content.scrollTop = 0;
   renderOfflineRow();
-  setSnap('peek');
+  maybeSnap('peek');
   fitAll(fly);
 }
 
@@ -1092,7 +1164,7 @@ function renderStage(id, fly) {
   const entry = stageLayers[id];
   if (!entry) return;
   const s = entry.stage, key = entry.trailKey, t = TRAILS[key];
-  if (snap === 'peek') setSnap('half');
+  maybeSnap('half');
   focusStage(id, fly);
   const start = s.coords[0], end = s.coords[s.coords.length - 1];
   const atStart = nearbyLines(start), atEnd = nearbyLines(end);
@@ -1115,7 +1187,8 @@ function renderStage(id, fly) {
   if (info.text) h += `<p class="stagetext">${esc(info.text)}</p>`;
   if (info.photos && info.photos.length) {
     h += `<div class="photos">` + info.photos.map((p, i) =>
-      `<figure onclick="openLightbox('${id}',${i})"><img loading="lazy" src="${p.url}" alt="" title="${esc(p.credit || '')}"></figure>`).join('') + `</div>`;
+      `<figure onclick="openLightbox('${id}',${i})"><img loading="lazy" decoding="async" width="220" height="140"
+        src="${p.url}" alt="" title="${esc(p.credit || '')}"></figure>`).join('') + `</div>`;
   }
   h += voteRow(id);
   if (notes.length) h += notes.map(n => `<div class="note">${icon('info')}<div>${esc(n)}</div></div>`).join('');
@@ -1165,6 +1238,10 @@ function renderStage(id, fly) {
   h += atEnd.length ? atEnd.map(transitCard).join('') : `<div class="note">${icon('info')}<div>Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div></div>`;
   content.innerHTML = h;
   content.scrollTop = 0;
+  if (!localStorage.getItem('hint.swipe')) {
+    localStorage.setItem('hint.swipe', '1');
+    setTimeout(() => toast('Tipp: seitwärts wischen blättert durch die Etappen'), 900);
+  }
 }
 window.zoomCamp = (lat, lng) => {
   map.stop();
@@ -1198,7 +1275,7 @@ function renderLine(id) {
   const g = lineLayers[id];
   if (!g) return;
   const ln = g.data;
-  if (snap === 'peek') setSnap('half');
+  maybeSnap('half');
   focusLine(id, true);
   let h = `<div class="topline">
       ${backBtn()}
@@ -1239,7 +1316,8 @@ function campRow(c) {
     <div class="kicon" style="background:${t.color}">${icon(t.icon)}</div>
     <div class="grow"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.text)}
       ${c.src ? ` <a href="${c.src}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(c.srcName || 'Details')}</a>` : ''}</div></div>
-    ${c.photos && c.photos[0] ? `<img class="thumb" loading="lazy" src="${c.photos[0].url}" alt="" title="${esc(c.photos[0].credit || '')}">` : ''}
+    ${c.photos && c.photos[0] ? `<img class="thumb" loading="lazy" decoding="async" width="58" height="46"
+      src="${c.photos[0].url}" alt="" title="${esc(c.photos[0].credit || '')}">` : ''}
   </div>`;
 }
 
@@ -1261,7 +1339,7 @@ function placesNearStage(id) {
 function renderPlace(id) {
   const p = placeById[id];
   if (!p) return;
-  if (snap === 'peek') setSnap('half');
+  maybeSnap('half');
   resetStyles();
   map.stop();
   map.flyTo([p.lat, p.lng], p.kind === 'town' ? 13 : 12, { duration: 0.7 });
@@ -1379,8 +1457,11 @@ function renderView(v) {
   updateStageNav();
 }
 function go(v) {
-  if (view && !(view.t === v.t && view.id === v.id)) viewStack.push(view);
-  if (viewStack.length > 40) viewStack.shift();
+  /* Gleiche Entität (Etappe -> Etappe) ersetzt die aktuelle Ansicht, statt sich
+     in der Historie zu stapeln: Zurück führt dann zur Übersicht bzw. zu dem,
+     was man davor angeschaut hat – nicht zur vorherigen Etappe. */
+  if (view && view.t !== v.t) viewStack.push(view);
+  if (viewStack.length > 20) viewStack.shift();
   renderView(v);
 }
 window.showStage = id => go({ t: 'stage', id });
@@ -1390,10 +1471,12 @@ window.showOverview = () => go({ t: 'overview' });
 window.goBack = () => renderView(viewStack.pop() || { t: 'overview' });
 function backBtn() {
   const p = viewStack[viewStack.length - 1];
-  const label = !p || p.t === 'overview' ? 'Zur Übersicht'
-    : p.t === 'stage' ? 'Zurück zu ' + esc(shortStageName(stageLayers[p.id].stage))
-    : p.t === 'place' ? 'Zurück zu ' + esc(placeById[p.id].name)
-    : 'Zurück zu ' + esc(lineLayers[p.id].data.name);
+  let label = 'Zur Übersicht';
+  try {
+    if (p && p.t === 'stage') label = 'Zurück zu ' + esc(shortStageName(stageLayers[p.id].stage));
+    else if (p && p.t === 'place') label = 'Zurück zu ' + esc(placeById[p.id].name);
+    else if (p && p.t === 'line') label = 'Zurück zu ' + esc(lineLayers[p.id].data.name);
+  } catch (e) { /* verwaister Eintrag – dann eben die Übersicht */ }
   return `<button class="backbtn" onclick="goBack()" title="${label}">${icon('arrowLeft')}</button>`;
 }
 /* Nur die Hervorhebung neu setzen, ohne die Karte zu bewegen. */
@@ -1505,9 +1588,10 @@ function legendHtml() {
     'Halt · größerer Ring = Knotenpunkt');
   h += `<h2>Topografische Karte (OpenTopoMap)</h2>`;
   for (const [kind, color, txt, w] of LEGEND_TOPO) h += row(legendSwatch(kind, color, w), txt);
-  h += `<div class="note">${icon('info')}<div>Die topografische Karte kommt online von OpenTopoMap
-    (CC-BY-SA). Ohne Netz erscheint automatisch die offline gespeicherte Vektorkarte darunter –
-    dort zeigen dieselben Symbole Wege, Wasser und Orte, aber ohne Höhenlinien.</div></div>`;
+  h += `<div class="note">${icon('info')}<div>Die topografische Karte stammt von OpenTopoMap (CC-BY-SA).
+    Entlang der Route lässt sie sich in der Übersicht offline speichern. Wo keine Kachel da ist –
+    also abseits des geladenen Korridors – scheint automatisch die Vektorkarte durch: dieselben Wege,
+    Gewässer und Orte, aber ohne Höhenlinien.</div></div>`;
   return h;
 }
 const legendEl = document.getElementById('legend');
@@ -1607,39 +1691,116 @@ function offlineHtml() {
     inner += `<div class="offok${all ? '' : ' muted'}">${icon(all ? 'check' : 'download')} ` +
       `Fotos offline: ${OFF.photoDone} / ${OFF.photoTotal}</div>`;
   }
-  inner += `<div class="offok muted">${icon('info')} Geländekarte lädt online nach; ohne Netz zeigt die Vektorkarte darunter</div>`;
+  inner += topoHtml();
   if (isIos && !isStandalone) {
     inner += `<div class="offok muted">${icon('install')} Tipp: Teilen → „Zum Home-Bildschirm“ installieren</div>`;
   }
   return inner;
 }
+/* Gemessener Schnitt im Hochland: ~39 kB je Kachel (Höhenlinien komprimieren schlecht) */
+function topoHtml() {
+  const est = n => Math.round(n * 39 / 1024) + ' MB';
+  if (TOPO.state === 'unsupported') return '';
+  if (TOPO.state === 'checking') {
+    return `<div class="offok muted">${icon('download')} Geländekarte: prüfe Speicher …</div>`;
+  }
+  if (TOPO.state === 'loading') {
+    const pct = TOPO.total ? Math.floor(TOPO.done / TOPO.total * 100) : 0;
+    return `<div class="note">${icon('download')}<div>Geländekarte wird geladen … ${TOPO.done} / ${TOPO.total} Kacheln
+      (${fmtMb(TOPO.bytes)})
+      <div class="progress"><i style="width:${pct}%"></i></div>
+      <button class="offbtn" style="background:#5f6368" onclick="downloadTopo()">Abbrechen</button>
+      <div class="tt-note">Läuft bewusst langsam, um den Kartenserver nicht zu überlasten. Die App darf offen bleiben.</div></div></div>`;
+  }
+  if (TOPO.state === 'ok') {
+    return `<div class="offok">${icon('check')} Geländekarte offline · ${TOPO.total} Kacheln
+      <a href="#" onclick="event.preventDefault();clearTopo()" style="color:var(--muted);margin-left:6px">löschen</a></div>`;
+  }
+  const rest = TOPO.total - TOPO.done;
+  const counts = topoCounts();
+  return `<div class="note${TOPO.state === 'partial' ? '' : ' warn'}">${icon(TOPO.state === 'partial' ? 'download' : 'warn')}<div>
+    ${TOPO.state === 'partial'
+      ? `Geländekarte teilweise offline: ${TOPO.done} von ${TOPO.total} Kacheln (bis Zoom ${TOPO.maxZ}).`
+      : `Die Geländekarte ist noch nicht offline gespeichert – ohne Netz gibt es dann nur die einfachere Vektorkarte.`}
+    <br><button class="offbtn" onclick="setTopoZoom(14)">Route laden · Zoom 8–14 (ca. ${est(counts[14])})</button>
+    <button class="offbtn" onclick="setTopoZoom(15)" style="margin-left:6px">Mit Detailzoom 15 (ca. ${est(counts[15])})</button>
+    <div class="tt-note">Höhenlinien entlang der Route, ±1,5–3 km breit. Zoom 15 zeigt Höhenlinien-Beschriftung
+      und einzelne Pfade – das Vierfache an Kacheln. Läuft gedrosselt, ca. ${Math.ceil(counts[TOPO.maxZ] / 8 / 60)}–${Math.ceil(counts[15] / 5 / 60)} Min.
+      ${TOPO.state === 'partial' ? `Bereits geladene Kacheln werden übersprungen.` : ''}</div></div></div>`;
+}
+function topoCounts() {
+  const save = TOPO.maxZ, out = {};
+  for (const z of [14, 15]) { TOPO.maxZ = z; out[z] = topoTileList().length; }
+  TOPO.maxZ = save;
+  return out;
+}
+window.setTopoZoom = z => {
+  TOPO.maxZ = z;
+  localStorage.setItem('topo.maxz', String(z));
+  downloadTopo();
+};
 function renderOfflineRow() {
   const el = document.getElementById('offlineRow');
   if (el) el.innerHTML = offlineHtml();
 }
 
-/* Paket-Speicher: IndexedDB (iOS leert Cache Storage aggressiv, IDB nicht) */
+/* Paket-Speicher: IndexedDB (iOS leert Cache Storage aggressiv, IDB nicht).
+   Store 'kv'   = das PMTiles-Vektorpaket
+   Store 'topo' = einzelne Geländekacheln, Schlüssel "z/x/y" */
 function idbOpen() {
   return new Promise((res, rej) => {
-    const q = indexedDB.open('highlands', 1);
-    q.onupgradeneeded = () => q.result.createObjectStore('kv');
+    const q = indexedDB.open('highlands', 2);
+    q.onupgradeneeded = () => {
+      const db = q.result;
+      if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      if (!db.objectStoreNames.contains('topo')) db.createObjectStore('topo');
+    };
     q.onsuccess = () => res(q.result);
     q.onerror = () => rej(q.error);
   });
 }
-async function idbGet(key) {
+async function idbGet(key, store = 'kv') {
   const db = await idbOpen();
   return new Promise((res, rej) => {
-    const r = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+    const r = db.transaction(store, 'readonly').objectStore(store).get(key);
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
 }
-async function idbSet(key, val) {
+async function idbSet(key, val, store = 'kv') {
   const db = await idbOpen();
   return new Promise((res, rej) => {
-    const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(val, key);
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(val, key);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+/* Viele kleine Kacheln in EINER Transaktion – einzeln wäre es zehnmal langsamer */
+async function idbPutMany(entries, store) {
+  if (!entries.length) return;
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const os = tx.objectStore(store);
+    for (const [k, v] of entries) os.put(v, k);
+    tx.oncomplete = () => res();
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbKeys(store) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const r = db.transaction(store, 'readonly').objectStore(store).getAllKeys();
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idbClear(store) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).clear();
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
   });
@@ -1704,6 +1865,95 @@ async function downloadPkg() {
   }
 }
 
+/* ================= Geländekarte offline =================
+   Die Kacheln von OpenTopoMap liegen als Blobs in IndexedDB (nicht im Cache
+   Storage – den räumt iOS unter Speicherdruck weg) und werden vom Service
+   Worker von dort ausgeliefert. Gespeichert wird nur ein Korridor um die
+   Route, nach oben hin schmaler: bei z15 ±1,5 km, bei z10 ±3 km. */
+const TOPO_ZOOMS = [[8, 0], [9, 0], [10, 3], [11, 3], [12, 3], [13, 2.5], [14, 2], [15, 1.5]];
+const TOPO = {
+  state: 'checking', done: 0, total: 0, bytes: 0, cancel: false, err: null,
+  maxZ: +localStorage.getItem('topo.maxz') || 15
+};
+const topoListCache = {};
+function topoTileList() {
+  if (topoListCache[TOPO.maxZ]) return topoListCache[TOPO.maxZ];
+  const out = [];
+  const pts = [];
+  for (const id in stageLayers) for (const c of stageLayers[id].stage.coords) pts.push(c);
+  for (const p of (window.PLACES || [])) pts.push([p.lat, p.lng]);
+  for (const [z, bufKm] of TOPO_ZOOMS) {
+    if (z > TOPO.maxZ) continue;
+    const n = 2 ** z, set = new Set();
+    const tileKm = 40075 * Math.cos(57 * Math.PI / 180) / n;
+    const r = Math.ceil(bufKm / tileKm);
+    for (const c of pts) {
+      const x = Math.floor((c[1] + 180) / 360 * n);
+      const lat = c[0] * Math.PI / 180;
+      const y = Math.floor((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2 * n);
+      for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) set.add((x + dx) + '/' + (y + dy));
+    }
+    for (const k of set) out.push(z + '/' + k);
+  }
+  topoListCache[TOPO.maxZ] = out;
+  return out;
+}
+async function topoCheck() {
+  if (!('indexedDB' in window) || location.protocol === 'file:') { TOPO.state = 'unsupported'; return; }
+  try {
+    const have = new Set(await idbKeys('topo'));
+    const list = topoTileList();
+    TOPO.total = list.length;
+    TOPO.done = list.reduce((a, k) => a + (have.has(k) ? 1 : 0), 0);
+    TOPO.state = TOPO.done >= TOPO.total ? 'ok' : TOPO.done ? 'partial' : 'missing';
+  } catch (e) { TOPO.state = 'missing'; }
+  renderOfflineRow();
+}
+window.downloadTopo = async () => {
+  if (TOPO.state === 'loading') { TOPO.cancel = true; return; }
+  const list = topoTileList();
+  const have = new Set(await idbKeys('topo'));
+  const todo = list.filter(k => !have.has(k));
+  TOPO.total = list.length; TOPO.done = list.length - todo.length;
+  TOPO.state = 'loading'; TOPO.cancel = false; TOPO.err = null;
+  renderOfflineRow();
+  const SUB = ['a', 'b', 'c'];
+  let next = 0, buf = [], lastPaint = 0;
+  const flush = async () => { const b = buf; buf = []; await idbPutMany(b, 'topo'); };
+  async function worker(w) {
+    while (next < todo.length && !TOPO.cancel) {
+      const key = next++;
+      const k = todo[key];
+      const [z, x, y] = k.split('/');
+      try {
+        const r = await fetch(`https://${SUB[key % 3]}.tile.opentopomap.org/${z}/${x}/${y}.png`);
+        if (r.ok) {
+          const b = await r.blob();
+          buf.push([k, b]); TOPO.bytes += b.size; TOPO.done++;
+          if (buf.length >= 24) await flush();
+        }
+      } catch (e) { TOPO.err = e.message; }
+      // Bewusst gedrosselt: OpenTopoMap bittet ausdrücklich darum, den Server
+      // nicht mit Massendownloads zu belasten.
+      await new Promise(res => setTimeout(res, 120));
+      if (performance.now() - lastPaint > 400) { lastPaint = performance.now(); renderOfflineRow(); }
+    }
+  }
+  await Promise.all([0, 1, 2, 3, 4, 5].map(worker));
+  await flush();
+  TOPO.state = TOPO.cancel ? (TOPO.done ? 'partial' : 'missing')
+    : (TOPO.done >= TOPO.total ? 'ok' : 'partial');
+  renderOfflineRow();
+  if (!TOPO.cancel) toast('Geländekarte offline gespeichert');
+  navigator.serviceWorker?.controller?.postMessage({ type: 'topo-updated' });
+};
+window.clearTopo = async () => {
+  if (!confirm('Alle gespeicherten Geländekacheln löschen?')) return;
+  await idbClear('topo');
+  TOPO.done = 0; TOPO.bytes = 0; TOPO.state = 'missing';
+  renderOfflineRow();
+};
+
 function toast(msg) {
   let t = document.getElementById('toast');
   if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
@@ -1761,6 +2011,7 @@ setTimeout(prefetchPhotos, 3000);
 
 renderView({ t: 'overview' });
 offlineCheck();
+topoCheck();
 </script>
 </body>
 </html>

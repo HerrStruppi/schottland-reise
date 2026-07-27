@@ -22,6 +22,22 @@ gecacht, nicht im Repo gespeichert), Daumen-Bewertung (hoch/runter) pro Etappe m
 Karte ab Zoom 10 + im Etappen-Sheet), Linien-Modus mit Fahrplantabellen und
 „Zeiten prüfen“-Links zu den offiziellen Seiten.
 
+## Offline
+
+Drei getrennte Vorräte, alle in IndexedDB (der Cache Storage wird von iOS unter
+Speicherdruck geleert, IndexedDB nicht):
+
+| Was | Größe | Wie |
+|---|---|---|
+| App, Daten, Fotos | ca. 40 MB | automatisch beim ersten Start |
+| Vektorkarte (`tiles/scotland.pmtiles`) | 92 MB | automatisch; deckt die **ganze Region** in allen Zoomstufen ab |
+| Geländekarte (OpenTopoMap-Raster) | 130 MB (Z8–14) bzw. 370 MB (Z8–15) | Knopf in der Übersicht; nur ein **Korridor von ±1,5–3 km** um die Route |
+
+Die Geländekarte ist zum Wandern die bessere (Höhenlinien), die Vektorkarte die
+vollständigere. Wo keine Geländekachel gespeichert ist, scheint automatisch die
+Vektorkarte durch. Der Download ist gedrosselt – OpenTopoMap bittet ausdrücklich
+darum, den Server nicht mit Massendownloads zu belasten.
+
 ## Installation & Updates
 
 - **Hosting**: GitHub Pages, Deploy per GitHub Action bei jedem Push auf `main`

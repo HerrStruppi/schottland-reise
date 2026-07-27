@@ -42,25 +42,29 @@ self.addEventListener('activate', e => {
    Speicherdruck/App-Schließen geleert – IndexedDB-Daten bleiben erhalten. */
 function idbOpen() {
   return new Promise((res, rej) => {
-    const q = indexedDB.open('highlands', 1);
-    q.onupgradeneeded = () => q.result.createObjectStore('kv');
+    const q = indexedDB.open('highlands', 2);
+    q.onupgradeneeded = () => {
+      const db = q.result;
+      if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      if (!db.objectStoreNames.contains('topo')) db.createObjectStore('topo');
+    };
     q.onsuccess = () => res(q.result);
     q.onerror = () => rej(q.error);
   });
 }
-async function idbGet(key) {
+async function idbGet(key, store = 'kv') {
   const db = await idbOpen();
   return new Promise((res, rej) => {
-    const r = db.transaction('kv', 'readonly').objectStore('kv').get(key);
+    const r = db.transaction(store, 'readonly').objectStore(store).get(key);
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
   });
 }
-async function idbSet(key, val) {
+async function idbSet(key, val, store = 'kv') {
   const db = await idbOpen();
   return new Promise((res, rej) => {
-    const tx = db.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(val, key);
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(val, key);
     tx.oncomplete = () => res();
     tx.onerror = () => rej(tx.error);
   });
@@ -176,10 +180,32 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Online-Rasterkacheln (OSM/OpenTopoMap): network first, Cache als Fallback.
-  // OpenTopoMap liefert keine CORS-Header -> die Antwort ist "opaque" und
-  // resp.ok ist false. Trotzdem speichern, sonst wäre die (standardmäßig
-  // aktive) Geländekarte offline komplett leer.
+  // Geländekacheln: zuerst aus dem Offline-Vorrat in IndexedDB. Der überlebt
+  // Speicherdruck auf iOS, anders als der Cache Storage.
+  const topo = url.pathname.match(/\/(\d+)\/(\d+)\/(\d+)\.png$/);
+  if (topo && /opentopomap\.org/.test(url.host)) {
+    e.respondWith((async () => {
+      const key = topo[1] + '/' + topo[2] + '/' + topo[3];
+      try {
+        const blob = await idbGet(key, 'topo');
+        if (blob) return new Response(blob, { headers: { 'Content-Type': 'image/png' } });
+      } catch (err) { /* weiter zum Netz */ }
+      const cache = await caches.open(RASTER_CACHE);
+      try {
+        const resp = await fetch(e.request);
+        if (resp && (resp.ok || resp.type === 'opaque')) {
+          cache.put(e.request, resp.clone()).then(trimRaster);
+        }
+        return resp;
+      } catch (err) {
+        const hit = await cache.match(e.request);
+        return hit || new Response('', { status: 503 });
+      }
+    })());
+    return;
+  }
+
+  // Übrige Online-Rasterkacheln (OSM-Fallback): network first, Cache danach
   if (/tile\.openstreetmap\.org|opentopomap\.org/.test(url.host)) {
     e.respondWith((async () => {
       const cache = await caches.open(RASTER_CACHE);
