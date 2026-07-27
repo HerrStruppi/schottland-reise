@@ -14,10 +14,10 @@ Offline-Kartenpaket (~92 MB); danach funktioniert alles ohne Netz.
 `index.html` (`GATE.hash`) eintragen (`echo -n 'neues-pw' | shasum -a 256`).
 Hinweis: Das Gate ist Komfort-Schutz im Client – das Repo selbst ist öffentlich.
 
-**Features:** Etappen-Modus mit ausführlicher Beschreibung, ~190 Komoot-Fotos inkl.
+**Features:** Etappen-Modus mit ausführlicher Beschreibung, ~210 Fotos inkl.
 Vollbild-Galerie
-(`stage-info-data.js`, Fotos werden vom Komoot-CDN geladen und auf dem Gerät
-gecacht, nicht im Repo gespeichert), Daumen-Bewertung (hoch/runter) pro Etappe mit Zählern (lokal pro Gerät,
+(`stage-info-data.js`, Fotos werden von Wikimedia Commons bzw. dem Komoot-CDN
+geladen und auf dem Gerät gecacht, nicht im Repo gespeichert), Daumen-Bewertung (hoch/runter) pro Etappe mit Zählern (lokal pro Gerät,
 `localStorage`; Datenstruktur für späteren Geräte-Sync vorbereitet), Zeltplatz-Kandidaten mit Quellen (`camps-data.js`,
 Karte ab Zoom 10 + im Etappen-Sheet), Linien-Modus mit Fahrplantabellen und
 „Zeiten prüfen“-Links zu den offiziellen Seiten.
@@ -70,7 +70,7 @@ darum, den Server nicht mit Massendownloads zu belasten.
 | `trails-data.js` | Generierte Trail-Daten (`window.TRAILS`): pro Etappe Name, Start/Ziel, km, Höhenmeter und eigene Koordinaten. **Nicht von Hand editieren** – mit `gpx-to-trails.py` neu erzeugen. |
 | `transit-data.js` | ÖPNV-Daten (`window.TRANSIT`): Linien mit Strecken, Halten (inkl. Koordinaten), Fahrplantabellen, Hinweisen und Warnungen. Von Hand gepflegt, Quelle: `fahrplaene.md`. |
 | `gpx-to-trails.py` | Konverter: liest die GPX-Dateien aus `gpx/`, vereinfacht (Douglas-Peucker ~6 m) und schreibt `trails-data.js`. Enthält die Ortsnamen der CWT-Etappen (`CWT_NAMES`). |
-| `stage-info-data.js` | Etappen-Kurztexte + Komoot-Highlight-Foto-URLs (generiert, Stand Juli 2026) |
+| `stage-info-data.js` | Etappen-Kurztexte + Foto-URLs (generiert, Stand Juli 2026). Fotos: überwiegend Wikimedia Commons / Geograph (CC BY-SA, mit Fotografennennung im `credit`), dazu je Etappe bis zu 2 Komoot-Bilder für Motive, die sonst niemand fotografiert hat. |
 | `camps-data.js` | Kuratierte Unterkünfte mit Beschreibung und Quelle (von Hand gepflegt). `type`: `hotel`, `hostel`, `camp`, `bothy`, `wild`. |
 | `osm-camps-data.js` | Zeltstellen aus der OpenStreetMap-Community. **Generiert** – mit `osm-camps.py` neu erzeugen. Bewusst getrennt von `camps-data.js`: ungeprüfte Fremdeinträge. |
 | `osm-camps.py` | Holt `tourism=camp_site` & Co. per Overpass, filtert auf 1,5 km um die Route und entfernt Dubletten zu `camps-data.js`. Braucht Netz, läuft **nicht** im Deploy. |
@@ -103,6 +103,15 @@ Eine HTML-Datei ohne Build-Tools, Design orientiert an Google Maps mobil:
 - Bus-/Bahnlinien sind vereinfachte Punkt-zu-Punkt-Polylinien (nicht straßengenau).
 
 ## Datenherkunft & Stand
+
+- **Etappen-Fotos**: über die Geo-Suche von Wikimedia Commons entlang der Route
+  eingesammelt (Suchpunkte alle 6 km, Radius 7 km, min. 1100x750 px, max. 4 km
+  vom Weg), dann visuell ausgewählt — von 2332 Kandidaten wurden 348 angesehen
+  und 152 übernommen. Fast alles stammt aus dem Geograph-Projekt (CC BY-SA 2.0);
+  die Namensnennung steht im `credit` und wird in der Großansicht angezeigt.
+  Achtung: Wikimedia erlaubt beim Hotlinken nur feste Thumbnail-Breiten
+  (250/330/500/960/1280/1920/3840) — URLs also nicht von Hand umschreiben,
+  sondern per API mit `iiurlwidth` erzeugen lassen.
 
 - **Trails**: Komoot-Collection "Schottland August 2026" (27 Touren: WHW 1–8
   mit Zwischenetappen, CWT 1–15), exportiert Juli 2026 über die Komoot-API
