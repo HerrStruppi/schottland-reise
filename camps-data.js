@@ -475,7 +475,7 @@ window.CAMPS = [
   /* ---------- cwt-6 ---------- */
   {
     stage: 'cwt-6', type: 'hostel', name: 'Gerry\'s Hostel (Craig, Achnashellach)', lat: 57.4909, lng: -5.2744,
-    text: 'Schottlands ältestes unabhängiges Hostel, direkt am Etappenziel in Craig – ganzjährig offen, Hauptdorm 10 Betten plus Familienzimmer, Selbstversorgerküche und Lounge mit Feuer. Vorab über die Website oder Tel. 01520 766232 reservieren; kein Laden vor Ort, Proviant mitbringen.',
+    text: 'ACHTUNG, Betrieb unsicher: Das Haus wurde zur Versteigerung angeboten, mehrere Quellen halten es für aufgegeben – die Website ist aber noch online. Vor der Reise unbedingt telefonisch bestätigen (01520 766232), sonst steht ihr am Etappenziel ohne Bett. Schottlands ältestes unabhängiges Hostel, direkt in Craig: Hauptdorm 10 Betten plus Familienzimmer, Selbstversorgerküche, Lounge mit Feuer. Kein Laden vor Ort. Rückfallebene: Campingplatz Achnashellach, 3 km westlich.',
     src: 'https://gerryshostel.com/', srcName: 'gerryshostel.com',
     photos: [{ url: 'https://gerryshostel.com/wp-content/uploads/2019/06/img_3592.jpg', credit: '© Gerry\'s Hostel' }]
   },

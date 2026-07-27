@@ -590,11 +590,20 @@ window.TRANSIT = {
     'cwt-5': ['Maol-bhuidhe: Bothy, kein ÖPNV, kein Netz.'],
     'cwt-6': ['Craig liegt an der Kyle Line – Bahnhof Achnashellach ist ein Bedarfshalt direkt am Trail: beim Aussteigen dem Zugpersonal Bescheid geben, beim Einsteigen dem Lokführer deutlich winken.'],
     'cwt-7': ['Ausweichweg über Coire Fionnaraich nach Annat/Shieldaig: dort fährt DMK Motors 702 zum Bahnhof Strathcarron.'],
+    'cwt-8': [
+      'Hochwasser: Zwei Querungen ohne Brücke – der Allt Coire Mhic Fhearchair vor dem Bealach na Croise (knapp oberhalb der zwei Wasserfälle queren) und der Bach bei Loch an Nid. Bei sehr hohem Wasser vom 16-km-Punkt direkt zum Allt Cul Doireachain absteigen und dort eine sichere Stelle suchen.',
+      'Für diesen Abschnitt gibt es KEINE Umgehungsvariante. Wenn das Wasser zu hoch steht, hilft nur warten – der nächste Notausstieg mit Bus ist erst auf der Folgeetappe bei Corrie Hallie/Dundonnell.'
+    ],
     'cwt-10': ['Oykel Bridge: kein belegter Linienverkehr. Der Bus 805 fährt trotz anderslautender Angaben im Netz NICHT über Oykel Bridge.'],
     'cwt-11': ['Inchnadamph ist doch angebunden: Rapsons 809 Ullapool ↔ Lochinver hält am Inchnadamph Hotel (2× täglich). Buchungspflicht bis 18:00 am Vortag!'],
     'cwt-12': ['Kylesku/Skiag Bridge: kein Linienbus. Nur der Assynt Dial-a-Bus auf Vorbestellung (+44 1571 844400) – ob Gäste ihn nutzen dürfen, vorher fragen.'],
     'cwt-14': ['Kinlochbervie: Laden (SPAR), Post, Unterkünfte, Bus 805.'],
-    'cwt-14.5': ['Sandwood Bay: kein Linienbus. Der Kinlochbervie Dial-a-Bus (+44 7836 736378) bedient aber Blairmore, den Wanderparkplatz am Zugang zur Bucht.']
+    'cwt-14.5': ['Sandwood Bay: kein Linienbus. Der Kinlochbervie Dial-a-Bus (+44 7836 736378) bedient aber Blairmore, den Wanderparkplatz am Zugang zur Bucht.'],
+    'cwt-15': [
+      'MoD-Schießplatz Cape Wrath: Bei Schießbetrieb ist der Zugang zu Fuß komplett gesperrt, die Ankündigung kommt teils nur 24 Std. vorher. Vorher anrufen: 0800 833 300 oder +44 1971 511242.',
+      'Rückfahrt nur mit Minibus + Fähre nach Keoldale – saisonal, wetter- und gezeitenabhängig, im Sommer sehr knappe Plätze. Entweder den ersten Bus (ca. 10:30) erwischen oder Wartezeit einplanen.',
+      'Der Strath Chailleach vor dem Bothy hat KEINE Brücke, obwohl die OS-Karte eine zeigt – die Furt kann bei Hochwasser unpassierbar sein.'
+    ]
   },
 
   /* Telefonnummern für Transfers und Notfälle. Bewusst KEINE Karten-Pins:
