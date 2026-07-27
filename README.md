@@ -55,7 +55,10 @@ Karte ab Zoom 10 + im Etappen-Sheet), Linien-Modus mit Fahrplantabellen und
 | `transit-data.js` | ÖPNV-Daten (`window.TRANSIT`): Linien mit Strecken, Halten (inkl. Koordinaten), Fahrplantabellen, Hinweisen und Warnungen. Von Hand gepflegt, Quelle: `fahrplaene.md`. |
 | `gpx-to-trails.py` | Konverter: liest die GPX-Dateien aus `gpx/`, vereinfacht (Douglas-Peucker ~6 m) und schreibt `trails-data.js`. Enthält die Ortsnamen der CWT-Etappen (`CWT_NAMES`). |
 | `stage-info-data.js` | Etappen-Kurztexte + Komoot-Highlight-Foto-URLs (generiert, Stand Juli 2026) |
-| `camps-data.js` | Zeltplatz-Kandidaten mit Beschreibung und Quelle (von Hand gepflegt) |
+| `camps-data.js` | Kuratierte Unterkünfte mit Beschreibung und Quelle (von Hand gepflegt). `type`: `hotel`, `hostel`, `camp`, `bothy`, `wild`. |
+| `osm-camps-data.js` | Zeltstellen aus der OpenStreetMap-Community. **Generiert** – mit `osm-camps.py` neu erzeugen. Bewusst getrennt von `camps-data.js`: ungeprüfte Fremdeinträge. |
+| `osm-camps.py` | Holt `tourism=camp_site` & Co. per Overpass, filtert auf 1,5 km um die Route und entfernt Dubletten zu `camps-data.js`. Braucht Netz, läuft **nicht** im Deploy. |
+| `places-data.js` | Orte an der Strecke (`window.PLACES`) mit Versorgungs-Infos: Läden, Apotheke, Post, Geld, Wäsche, Anbindung. Infrastruktur aus einer OSM-Abfrage, Texte von Hand. |
 | `vendor/flavor-scotland.js` | Farbschema der Vektorkarte (OSM-Carto-angelehnt, generiert aus @protomaps/basemaps `light`) |
 | `fahrplaene.md` | Zug- und Busfahrpläne als Text (Quelle der Fahrplantabellen) |
 | `gpx/West-Highland-Way-komplett.gpx` | 12 Etappen als benannte Tracks, mit Höhendaten (Original-Export) |

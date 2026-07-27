@@ -11,7 +11,7 @@ const PKG_KEY = 'pkg.pmtiles';
 
 const SHELL = [
   './', 'index.html', 'trails-data.js', 'transit-data.js', 'tiles-meta.json',
-  'stage-info-data.js', 'camps-data.js',
+  'stage-info-data.js', 'camps-data.js', 'osm-camps-data.js', 'places-data.js',
   'vendor/leaflet.min.js', 'vendor/leaflet.min.css',
   'vendor/protomaps-leaflet.js', 'vendor/pmtiles.js', 'vendor/flavor-scotland.js',
   'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png',

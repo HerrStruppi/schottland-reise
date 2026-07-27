@@ -357,6 +357,30 @@
   }
   .campicon .ic { width: 13px; height: 13px; }
   body:not(.show-camps) .campicon { display: none; }
+  .osmcamp {
+    display: flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(255,255,255,0.92); border: 1.5px dashed currentColor;
+  }
+  .osmcamp .ic { width: 10px; height: 10px; }
+  body:not(.show-osmcamps) .osmcamp { display: none; }
+  .placeicon {
+    display: flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50% 50% 50% 2px;
+    transform: rotate(45deg); background: #37474f; color: #fff;
+    font: 700 12px/1 system-ui, sans-serif; border: 1.5px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.45);
+  }
+  .placeicon::before { content: 'i'; transform: rotate(-45deg); }
+  .placeicon.big { width: 24px; height: 24px; font-size: 14px; }
+  body:not(.show-places) .placeicon { display: none; }
+  .factrow { display: flex; gap: 10px; align-items: flex-start; padding: 7px 2px; border-bottom: 1px solid var(--line); }
+  .factrow:last-child { border-bottom: none; }
+  .factrow .ic { width: 17px; height: 17px; color: var(--muted); margin-top: 1px; }
+  .factrow b { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .factrow span { font-size: 13.5px; }
+  .telrow { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+  .telrow small { display: block; font-weight: 400; font-size: 11px; opacity: 0.8; }
   .camp-cat {
     display: flex; align-items: center; gap: 7px; margin: 14px 0 4px;
     font-size: 12px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #5f6b73;
@@ -468,6 +492,8 @@
 <script src="transit-data.js"></script>
 <script src="stage-info-data.js"></script>
 <script src="camps-data.js"></script>
+<script src="osm-camps-data.js"></script>
+<script src="places-data.js"></script>
 <script src="vendor/leaflet.min.js"></script>
 <script src="vendor/protomaps-leaflet.js"></script>
 <script src="vendor/flavor-scotland.js"></script>
@@ -498,18 +524,35 @@ const ICON_PATHS = {
   close: '<path d="M6 18 18 6M6 6l12 12"/>',
   hut: '<path d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75"/>',
   bed: '<path d="M2.75 17.25V7.5"/><path d="M2.75 14.25h18.5v3"/><path d="M2.75 11.25h12a4 4 0 0 1 4 4"/><path d="M6.5 8.25h.01"/><path d="M5.4 9.35a1.55 1.55 0 1 0 2.2-2.2 1.55 1.55 0 0 0-2.2 2.2Z"/>',
-  link: '<path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>'
+  link: '<path d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>',
+  bunk: '<path d="M3.75 3.5v17M20.25 3.5v17"/><path d="M3.75 8.25h16.5M3.75 11.5h16.5M3.75 15.75h16.5M3.75 19h16.5"/>',
+  cart: '<path d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.1 60.1 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z"/>',
+  backpack: '<path d="M7.5 8.25V6a4.5 4.5 0 0 1 9 0v2.25"/><path d="M5.25 8.25h13.5A2.25 2.25 0 0 1 21 10.5v8.25A2.25 2.25 0 0 1 18.75 21H5.25A2.25 2.25 0 0 1 3 18.75V10.5a2.25 2.25 0 0 1 2.25-2.25Z"/><path d="M8.25 13.5h7.5"/>',
+  health: '<path d="M12 6.75v10.5M6.75 12h10.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>',
+  cash: '<path d="M2.25 9a2.25 2.25 0 0 1 2.25-2.25h15A2.25 2.25 0 0 1 21.75 9v9a2.25 2.25 0 0 1-2.25 2.25h-15A2.25 2.25 0 0 1 2.25 18V9Z"/><path d="M2.25 10.5h19.5"/><path d="M13.5 15.75a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/>',
+  mail: '<path d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/>',
+  wash: '<path d="M5.25 3.75h13.5a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V5.25a1.5 1.5 0 0 1 1.5-1.5Z"/><path d="M16.5 13.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z"/><path d="M6.9 6.75h.01M9.9 6.75h.01"/>',
+  cup: '<path d="M4.5 5.25h12v7.5a6 6 0 0 1-12 0v-7.5Z"/><path d="M16.5 8.25h1.9a2.6 2.6 0 0 1 0 5.25H16.5"/><path d="M3 21h15"/>',
+  pin: '<path d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/>'
 };
 const icon = (name, cls) => '<svg class="ic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON_PATHS[name] + '</svg>';
 const KIND_ICON = { zug: icon('train'), bus: icon('bus'), faehre: icon('ferry') };
-/* Unterkunfts-Kategorien: Farbe, Icon, Label */
+/* Unterkunfts-Kategorien: Farbe, Icon, Label.
+   „Unter Dach“ ist bewusst zweigeteilt – zwischen einem Bett im Bunkhouse und
+   einem Hotelzimmer liegt hier oft der Faktor drei beim Preis. */
 const CAMP_TYPES = {
-  roof:  { color: '#7a4e8f', icon: 'bed',  label: 'Feste Unterkünfte (ohne Zelt)' },
-  camp:  { color: '#3d6a96', icon: 'tent', label: 'Campingplätze' },
-  bothy: { color: '#8a6d3b', icon: 'hut',  label: 'Bothies' },
-  wild:  { color: '#4b6b52', icon: 'tent', label: 'Wildzelt-Spots' }
+  hotel:  { color: '#a04a72', icon: 'bed',  label: 'Hotels & Inns (teurer)' },
+  hostel: { color: '#7a4e8f', icon: 'bunk', label: 'Bunkhouses, Hostels & B&Bs' },
+  camp:   { color: '#3d6a96', icon: 'tent', label: 'Campingplätze (bezahlt)' },
+  bothy:  { color: '#8a6d3b', icon: 'hut',  label: 'Bothies' },
+  wild:   { color: '#4b6b52', icon: 'tent', label: 'Wildzelt-Spots' }
 };
 const campType = c => CAMP_TYPES[c.type] ? c.type : (c.paid ? 'camp' : 'wild');
+/* Symbole für die Orts-Infos */
+const FACT_ICON = {
+  shop: 'cart', outdoor: 'backpack', health: 'health', cash: 'cash', post: 'mail',
+  wash: 'wash', food: 'cup', fuel: 'info', info: 'info', water: 'info', transit: 'bus'
+};
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 /* ================= Karte ================= */
@@ -617,7 +660,7 @@ for (const key of Object.keys(TRAILS)) {
 
 /* ================= ÖPNV zeichnen ================= */
 const lineLayers = {};    // id -> {lines:[], stops:[], pill}
-const MAJOR_LABELS = new Set(['whl', 'kyle', 'b915', 'b805', 'b961']);
+const MAJOR_LABELS = new Set(['whl', 'kyle', 'b915', 'b805', 'b961', 'e5', 'b44', 'llwater']);
 for (const ln of TRANSIT.lines) {
   const dash = ln.kind === 'faehre' ? '3 7' : null;
   const group = { lines: [], stops: [], pill: null, data: ln };
@@ -640,8 +683,10 @@ for (const ln of TRANSIT.lines) {
   }
   // Linien-Beschriftung (Pill) in der Streckenmitte
   const mid = ln.coords[Math.floor(ln.coords.length / 2)];
-  const short = ln.name.replace('Citylink ', '').replace('Westerbus ', '').replace('Bus ', '')
+  const short = ln.name
+    .replace(/^(Citylink|Westerbus|Bus|Ember|Rapsons|McColl’s|Shiel Buses|DMK Motors) /, '')
     .replace('Fähre Fort William – Camusnagaul', 'Camusnagaul').replace('Fähre + Minibus Cape Wrath', 'Cape Wrath')
+    .replace('Waterbus Loch Lomond', 'Waterbus').replace('Fähre Ardleish – Ardlui', 'Ardleish')
     .replace(' + D&E 61', '/61').replace(' Far North', '').replace(' / 700 / 707', '');
   const pill = L.marker(mid, {
     icon: L.divIcon({
@@ -667,6 +712,38 @@ for (const c of (window.CAMPS || [])) {
     { maxWidth: 260 });
 }
 
+/* ---------- Zeltstellen aus der OpenStreetMap-Community ----------
+   Bewusst anders gezeichnet (klein, hell, gestrichelter Rand): Das sind
+   fremde Einträge, keine eigene Recherche. Erst ab Zoom 12 sichtbar,
+   sonst übertönen sie die kuratierten Punkte. */
+for (const c of (window.OSM_CAMPS || [])) {
+  const t = CAMP_TYPES[c.type] || CAMP_TYPES.wild;
+  const m = L.marker([c.lat, c.lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<span class="osmcamp" style="color:${t.color}">${icon(t.icon)}</span>`,
+      iconSize: [18, 18], iconAnchor: [9, 9]
+    })
+  }).addTo(map);
+  m.bindPopup(`<h3>${esc(c.name)}</h3>${esc(c.text)}` +
+    `<br><a href="https://www.openstreetmap.org/${c.osm}" target="_blank" rel="noopener">Eintrag in OpenStreetMap</a>`,
+    { maxWidth: 260 });
+}
+
+/* ---------- Orte ---------- */
+const placeById = {};
+for (const p of (window.PLACES || [])) {
+  placeById[p.id] = p;
+  const m = L.marker([p.lat, p.lng], {
+    icon: L.divIcon({
+      className: '',
+      html: `<span class="placeicon${p.kind === 'town' ? ' big' : ''}">i</span>`,
+      iconSize: [20, 20], iconAnchor: [10, 22]
+    }), zIndexOffset: 400
+  }).addTo(map);
+  m.on('click', ev => { L.DomEvent.stopPropagation(ev); showPlace(p.id); });
+}
+
 /* Label-Sichtbarkeit nach Zoomstufe */
 function updateLabelVisibility() {
   const z = map.getZoom();
@@ -674,6 +751,8 @@ function updateLabelVisibility() {
   document.body.classList.toggle('show-stops', z >= 10);
   document.body.classList.toggle('show-transit-lbl', z >= 9);
   document.body.classList.toggle('show-camps', z >= 10);
+  document.body.classList.toggle('show-osmcamps', z >= 12);
+  document.body.classList.toggle('show-places', z >= 9);
 }
 map.on('zoomend', updateLabelVisibility);
 updateLabelVisibility();
@@ -948,6 +1027,29 @@ function renderOverview(fly) {
       ${icon('chevRight', 'chev')}
     </div>`).join('');
   h += `</details>`;
+  const PL = window.PLACES || [];
+  if (PL.length) {
+    h += `<details class="sec"><summary><h2>Orte &amp; Versorgung · ${PL.length}</h2></summary>`;
+    h += PL.map(p => `
+      <div class="row" onclick="showPlace('${p.id}')">
+        <div class="kicon" style="background:#37474f">${icon('pin')}</div>
+        <div class="grow"><div class="t">${esc(p.name)}</div>
+          <div class="s">${esc(p.facts.map(f => FACT_LABEL[f[0]] || f[0]).slice(0, 4).join(' · '))}</div></div>
+        ${icon('chevRight', 'chev')}
+      </div>`).join('');
+    h += `</details>`;
+  }
+  if (TRANSIT.contacts) {
+    h += `<details class="sec"><summary><h2>Telefonnummern für unterwegs</h2></summary>
+      <div class="note warn">${icon('warn')}<div>Taxis und Bedarfsbusse fahren hier <b>nur auf Vorbestellung</b> –
+        und auf weiten Teilen des CWT gibt es keinen Handyempfang. Diese Liste ist offline verfügbar,
+        die Nummern trotzdem vorher notieren.</div></div>`;
+    h += TRANSIT.contacts.map(g => `<h2>${esc(g.region)}</h2><div class="telrow">` +
+      g.items.map(i => `<a class="telbtn" href="tel:${i.tel.replace(/\s/g, '')}">${icon('phone')}
+        <span>${esc(i.label)}<small>${esc(i.tel)}${i.note ? ' · ' + esc(i.note) : ''}</small></span></a>`).join('') +
+      `</div>`).join('');
+    h += `</details>`;
+  }
   h += `<details class="sec"><summary><h2>Wichtige Hinweise</h2></summary>` +
     TRANSIT.generalWarns.map(w => `<div class="note warn">${icon('warn')}<div>${esc(w)}</div></div>`).join('') +
     `<div class="note">${icon('info')}<div>Alle Zeiten vor Fahrtantritt prüfen: <a href="https://www.travelinescotland.com" target="_blank" rel="noopener">travelinescotland.com</a></div></div></details>`;
@@ -1017,19 +1119,45 @@ function renderStage(id, fly) {
   }
   h += voteRow(id);
   if (notes.length) h += notes.map(n => `<div class="note">${icon('info')}<div>${esc(n)}</div></div>`).join('');
+  const places = placesNearStage(id);
+  if (places.length) {
+    h += `<h2>Orte an dieser Etappe</h2>` + places.map(p => `
+      <div class="row" onclick="showPlace('${p.place.id}')">
+        <div class="kicon" style="background:#37474f">${icon('pin')}</div>
+        <div class="grow"><div class="t">${esc(p.place.name)}</div>
+          <div class="s">${esc(p.place.facts.map(f => f[1].split(/[,(]/)[0].trim()).slice(0, 3).join(' · '))}</div></div>
+        <div class="meta">${p.d < 0.4 ? 'am Weg' : fmt(Math.round(p.d * 10) / 10) + ' km'}</div>
+        ${icon('chevRight', 'chev')}
+      </div>`).join('');
+  }
   if (camps.length) {
     h += `<h2>Übernachten</h2>`;
     for (const key in CAMP_TYPES) {
       const t = CAMP_TYPES[key], list = camps.filter(c => campType(c) === key);
       if (!list.length) continue;
-      h += `<div class="camp-cat"><span class="dot" style="background:${t.color}"></span>${t.label}</div>` + list.map(c => `
-        <div class="row" onclick="zoomCamp(${c.lat},${c.lng})">
-          <div class="kicon" style="background:${t.color}">${icon(t.icon)}</div>
-          <div class="grow"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.text)}
-            ${c.src ? ` <a href="${c.src}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(c.srcName || 'Details')}</a>` : ''}</div></div>
-          ${c.photos && c.photos[0] ? `<img class="thumb" loading="lazy" src="${c.photos[0].url}" alt="" title="${esc(c.photos[0].credit || '')}">` : ''}
-        </div>`).join('');
+      h += `<div class="camp-cat"><span class="dot" style="background:${t.color}"></span>${t.label}</div>` + list.map(campRow).join('');
     }
+  }
+  const osm = (window.OSM_CAMPS || []).filter(c => c.stage === id);
+  if (osm.length) {
+    h += `<details class="sec"><summary><h2>Zeltstellen aus OpenStreetMap · ${osm.length}</h2></summary>
+      <div class="note">${icon('info')}<div>Von der Community eingetragen, von uns <b>nicht geprüft</b> –
+        oft aber genau die kleinen Flecken, die sonst nirgends stehen. Auf der Karte gestrichelt umrandet (ab Zoom 12).</div></div>`;
+    if (LOMOND_BYELAW.has(id)) {
+      h += `<div class="note warn">${icon('warn')}<div>Loch Lomond &amp; Trossachs National Park: In den
+        Camping-Management-Zonen ist Zelten von <b>1. März bis 30. September nur mit Permit</b> erlaubt –
+        also auch in unserem Reisezeitraum. Vor der Nutzung prüfen:
+        <a href="https://www.lochlomond-trossachs.org/things-to-do/camping/" target="_blank" rel="noopener">lochlomond-trossachs.org</a></div></div>`;
+    }
+    h += osm.map(c => {
+      const t = CAMP_TYPES[c.type] || CAMP_TYPES.wild;
+      return `<div class="row" onclick="zoomCamp(${c.lat},${c.lng})">
+        <div class="kicon" style="background:#fff;border:1.5px dashed ${t.color};color:${t.color}">${icon(t.icon)}</div>
+        <div class="grow"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.text)}</div></div>
+        <div class="meta">${c.d < 0.15 ? 'am Weg' : fmt(c.d) + ' km'}</div>
+      </div>`;
+    }).join('');
+    h += `</details>`;
   }
   h += `<h2>Anbindung am Start · ${esc(s.from)}</h2>`;
   h += atStart.length ? atStart.map(transitCard).join('') : `<div class="note">${icon('info')}<div>Keine erfasste Linie in der Nähe (±5 km Luftlinie).</div></div>`;
@@ -1103,6 +1231,85 @@ function renderLine(id) {
   content.scrollTop = 0;
 }
 
+/* Etappen im Bereich der Loch-Lomond-Camping-Byelaws (Permit-Pflicht März–Sep) */
+const LOMOND_BYELAW = new Set(['whw-2', 'whw-2.5', 'whw-3', 'whw-3.5']);
+function campRow(c) {
+  const t = CAMP_TYPES[campType(c)];
+  return `<div class="row" onclick="zoomCamp(${c.lat},${c.lng})">
+    <div class="kicon" style="background:${t.color}">${icon(t.icon)}</div>
+    <div class="grow"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.text)}
+      ${c.src ? ` <a href="${c.src}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(c.srcName || 'Details')}</a>` : ''}</div></div>
+    ${c.photos && c.photos[0] ? `<img class="thumb" loading="lazy" src="${c.photos[0].url}" alt="" title="${esc(c.photos[0].credit || '')}">` : ''}
+  </div>`;
+}
+
+/* ---------- Orte ---------- */
+function placesNearStage(id) {
+  const coords = stageLayers[id].stage.coords;
+  const step = Math.max(1, Math.floor(coords.length / 350));
+  const res = [];
+  for (const p of (window.PLACES || [])) {
+    let best = Infinity;
+    for (let i = 0; i < coords.length; i += step) {
+      const d = haversineKm([p.lat, p.lng], coords[i]);
+      if (d < best) best = d;
+    }
+    if (best <= 8) res.push({ place: p, d: best });
+  }
+  return res.sort((a, b) => a.d - b.d);
+}
+function renderPlace(id) {
+  const p = placeById[id];
+  if (!p) return;
+  if (snap === 'peek') setSnap('half');
+  resetStyles();
+  map.stop();
+  map.flyTo([p.lat, p.lng], p.kind === 'town' ? 13 : 12, { duration: 0.7 });
+  const near = stagesNearPoint([p.lat, p.lng], 8);
+  const camps = (window.CAMPS || []).filter(c =>
+    haversineKm([p.lat, p.lng], [c.lat, c.lng]) <= 3.5);
+  const lines = nearbyLines([p.lat, p.lng], 6);
+  const KIND = { town: 'Stadt', village: 'Dorf', hamlet: 'Weiler' };
+
+  let h = `<div class="topline">
+      ${backBtn()}
+      <span class="kicon" style="background:#37474f;width:26px;height:26px">${icon('pin')}</span>
+      <span class="chip">${KIND[p.kind] || 'Ort'}</span>
+      <span class="spacer"></span>
+    </div>
+    <h1>${esc(p.name)}</h1>
+    <p class="stagetext">${esc(p.text)}</p>`;
+  h += `<h2>Was es hier gibt</h2>`;
+  h += p.facts.map(([k, v]) => `<div class="factrow">${icon(FACT_ICON[k] || 'info')}
+    <div><b>${esc(FACT_LABEL[k] || k)}</b><span>${esc(v)}</span></div></div>`).join('');
+  if (near.length) {
+    h += `<h2>Etappen in der Nähe</h2>` + near.map(n => {
+      const col = TRAIL_COLORS[stageLayers[n.stage.id].trailKey];
+      return `<div class="row" onclick="showStage('${n.stage.id}')">
+        <div class="num" style="background:${col}">${n.stage.id.split('-')[1]}</div>
+        <div class="grow"><div class="t">${esc(n.stage.from)} → ${esc(n.stage.to)}</div></div>
+        <div class="meta">${n.d < 0.4 ? 'am Weg' : fmt(Math.round(n.d * 10) / 10) + ' km'}</div>
+        ${icon('chevRight', 'chev')}
+      </div>`;
+    }).join('');
+  }
+  const paid = camps.filter(c => campType(c) === 'camp');
+  const rest = camps.filter(c => campType(c) !== 'camp');
+  if (paid.length) h += `<h2>Campingplätze hier</h2>` + paid.map(campRow).join('');
+  if (rest.length) {
+    h += `<details class="sec"><summary><h2>Weitere Unterkünfte · ${rest.length}</h2></summary>`
+      + rest.map(campRow).join('') + `</details>`;
+  }
+  if (lines.length) h += `<h2>Anbindung</h2>` + lines.map(transitCard).join('');
+  content.innerHTML = h;
+  content.scrollTop = 0;
+}
+const FACT_LABEL = {
+  shop: 'Einkaufen', outdoor: 'Outdoor & Ausrüstung', health: 'Gesundheit', cash: 'Geld',
+  post: 'Post', wash: 'Wäsche', food: 'Essen & Trinken', fuel: 'Tankstelle',
+  info: 'Information', water: 'Wasser & WC', transit: 'Anbindung'
+};
+
 /* ---------- Linienverlauf im Bahn-/Bus-Stil ----------
    Die früher separate Liste „Halte“ ist hier aufgegangen: Sie zeigt jetzt
    zusätzlich die ausgelassenen Zwischenhalte und die Etappen am Halt. */
@@ -1167,6 +1374,7 @@ function renderView(v) {
   view = v;
   if (v.t === 'stage') renderStage(v.id, !!prev);
   else if (v.t === 'line') renderLine(v.id);
+  else if (v.t === 'place') renderPlace(v.id);
   else renderOverview(!!prev);
   updateStageNav();
 }
@@ -1177,12 +1385,14 @@ function go(v) {
 }
 window.showStage = id => go({ t: 'stage', id });
 window.showLine = id => go({ t: 'line', id });
+window.showPlace = id => go({ t: 'place', id });
 window.showOverview = () => go({ t: 'overview' });
 window.goBack = () => renderView(viewStack.pop() || { t: 'overview' });
 function backBtn() {
   const p = viewStack[viewStack.length - 1];
   const label = !p || p.t === 'overview' ? 'Zur Übersicht'
     : p.t === 'stage' ? 'Zurück zu ' + esc(shortStageName(stageLayers[p.id].stage))
+    : p.t === 'place' ? 'Zurück zu ' + esc(placeById[p.id].name)
     : 'Zurück zu ' + esc(lineLayers[p.id].data.name);
   return `<button class="backbtn" onclick="goBack()" title="${label}">${icon('arrowLeft')}</button>`;
 }
@@ -1232,7 +1442,10 @@ document.getElementById('fitBtn').innerHTML =
 document.getElementById('fitBtn').addEventListener('click', () => {
   if (view && view.t === 'stage') fitWithSheet(stageLayers[view.id].line.getBounds(), true);
   else if (view && view.t === 'line') fitWithSheet(lineBounds(view.id), true);
-  else fitAll(true);
+  else if (view && view.t === 'place') {
+    const p = placeById[view.id];
+    map.stop(); map.flyTo([p.lat, p.lng], p.kind === 'town' ? 13 : 12, { duration: 0.7 });
+  } else fitAll(true);
 });
 
 /* ================= Kartenlegende =================
@@ -1279,6 +1492,11 @@ function legendHtml() {
     const t = CAMP_TYPES[k];
     h += row(`<span class="campicon" style="background:${t.color};display:inline-flex">${icon(t.icon)}</span>`, t.label);
   }
+  h += row(`<span class="osmcamp" style="color:#4b6b52;display:inline-flex">${icon('tent')}</span>`,
+    'Gestrichelt: Zeltstelle aus OpenStreetMap, ungeprüft (ab Zoom 12)');
+  h += `<h2>Orte</h2>`;
+  h += row(`<span class="placeicon" style="display:inline-flex"></span>`,
+    'Ort mit Versorgungs-Infos – antippen für Läden, Apotheke, Post, Anschluss');
   h += `<h2>Bahn, Bus &amp; Fähren</h2>`;
   h += row(legendSwatch('line', '#3f4d55', 3), 'Bahnlinie');
   h += row(legendSwatch('line', '#3c6e9e', 3), 'Buslinie');

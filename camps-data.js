@@ -1,7 +1,8 @@
 // Übernachtungsmöglichkeiten entlang WHW und CWT. Koordinaten: Nominatim/OSM,
 // MBA-Grid-Refs bzw. Geograph-Foto-GPS. Stand der Recherche: Juli 2026 –
 // Öffnungszeiten/Preise vor Ort prüfen, alle Links und Fotos verifiziert.
-// type: 'roof'  = feste Unterkunft (Bunkhouse, Hostel, B&B, Hotel an der Strecke)
+// type: 'hotel'  = Hotel / Inn mit Zimmern, gehobenes Preisniveau
+//       'hostel' = günstig unter Dach: Bunkhouse, Hostel, Pods, einfaches B&B
 //       'camp'  = offizieller Campingplatz (Gebühr)
 //       'bothy' = Bothy/Schutzhütte (unbewirtschaftet, frei bzw. Honesty Box)
 //       'wild'  = Wildzelt-Spot (legal nach Scottish Outdoor Access Code;
@@ -18,7 +19,7 @@ window.CAMPS = [
 
   /* ---------- whw-2 ---------- */
   {
-    stage: 'whw-2', type: 'roof', name: 'Oak Tree Inn (Balmaha)', lat: 56.084, lng: -4.5399,
+    stage: 'whw-2', type: 'hotel', name: 'Oak Tree Inn (Balmaha)', lat: 56.084, lng: -4.5399,
     text: 'Der Klassiker in Balmaha direkt am Way: Inn mit Zimmern und Cabins, dazu Pub-Küche, eigenes Café (St Mocha) und Village Shop — letzte gute Einkaufsmöglichkeit vor Rowardennan. Im August früh ausgebucht, Wochenenden sehr voll.',
     src: 'https://www.oak-tree-inn.co.uk/', srcName: 'oak-tree-inn.co.uk',
     photos: [{ url: 'https://s0.geograph.org.uk/geophotos/03/75/99/3759934_254cb998.jpg', credit: '© Andy Farrington, geograph.org.uk, CC BY-SA 2.0' }]
@@ -38,13 +39,18 @@ window.CAMPS = [
 
   /* ---------- whw-2.5 ---------- */
   {
-    stage: 'whw-2.5', type: 'roof', name: 'Rowardennan Youth Hostel (Hostelling Scotland)', lat: 56.158, lng: -4.6435,
+    stage: 'whw-2.5', type: 'hostel', name: 'Rowardennan Youth Hostel (Hostelling Scotland)', lat: 56.158, lng: -4.6435,
     text: 'Frisch renoviertes SYHA-Hostel in einer viktorianischen Jagd-Lodge direkt am Loch, ca. 1 km hinter dem Rowardennan-Pier. Betten und Privatzimmer, Selbstversorgerküche, Abendessen/Frühstück buchbar, Drying Room. Im August oft Monate vorher ausgebucht.',
     src: 'https://www.hostellingscotland.org.uk/hostels/rowardennan/', srcName: 'hostellingscotland.org.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rowardennan_Lodge_Youth_Hostel_-_geograph.org.uk_-_3287777.jpg/1280px-Rowardennan_Lodge_Youth_Hostel_-_geograph.org.uk_-_3287777.jpg', credit: '© Rude Health, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'whw-2.5', type: 'roof', name: 'Rowardennan Hotel', lat: 56.1493, lng: -4.6414,
+    stage: 'whw-2.5', type: 'hostel', name: 'Ben Lomond Bunkhouse (NTS)', lat: 56.15878, lng: -4.64047,
+    text: 'Bunkhouse des National Trust for Scotland in der Ardess Lodge, ca. 15 Gehminuten nördlich des Rowardennan Hotel und damit die letzte Unterkunft vor dem ruppigen Uferabschnitt. 10 Betten in einem 4er- und einem 6er-Raum, einzeln buchbar. Große Selbstversorgerküche, Aufenthaltsraum mit Holzofen, sehr guter Trockenraum; Bettwäsche inklusive, dazu Tee, Kaffee, Brot, Eier und Haferflocken fürs Selbstfrühstück und ein Honesty-Shop.',
+    src: 'https://www.nts.org.uk/holiday-accommodation/bunkhouses/ben-lomond-bunkhouse', srcName: 'nts.org.uk'
+  },
+  {
+    stage: 'whw-2.5', type: 'hotel', name: 'Rowardennan Hotel', lat: 56.1493, lng: -4.6414,
     text: 'Hotel mit der Clansman Bar am Etappenende unterhalb des Ben Lomond — letzte Einkehr und letztes Bett vor dem einsamen Ostufer-Abschnitt. Biergarten mit Loch-Blick, Pub-Essen; Zimmer für August früh sichern.',
     src: 'https://rowardennanhotel.co.uk/', srcName: 'rowardennanhotel.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Rowardennan_Hotel_-_geograph.org.uk_-_7140576.jpg/1280px-Rowardennan_Hotel_-_geograph.org.uk_-_7140576.jpg', credit: '© Richard Sutcliffe, geograph.org.uk, CC BY-SA 2.0' }]
@@ -64,13 +70,18 @@ window.CAMPS = [
 
   /* ---------- whw-3 ---------- */
   {
-    stage: 'whw-3', type: 'roof', name: 'Inversnaid Hotel', lat: 56.2431, lng: -4.6844,
+    stage: 'whw-3', type: 'hotel', name: 'Inversnaid Hotel', lat: 56.2431, lng: -4.6844,
     text: 'Großes Ausflugshotel direkt am Wasserfall von Inversnaid, mitten auf dem einsamsten Abschnitt — der Way führt an der Haustür vorbei. Einzelzimmer für Wanderer buchbar; Bar mit Essen auch für Nicht-Gäste, guter Zwischenstopp.',
     src: 'https://www.lochsandglens.com/our-hotels/inversnaid-hotel', srcName: 'lochsandglens.com',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Inversnaid_Hotel.jpg/1280px-Inversnaid_Hotel.jpg', credit: '© Macieklew, Wikimedia Commons, CC BY-SA 4.0' }]
   },
   {
-    stage: 'whw-3', type: 'roof', name: 'Inversnaid Bunkhouse', lat: 56.2463, lng: -4.6715,
+    stage: 'whw-3', type: 'hotel', name: 'Garrison of Inversnaid', lat: 56.25042, lng: -4.66719,
+    text: 'Zwei Studio-Apartments in einer umgebauten Scheune, jeweils mit King-Bett, Bad, Kitchenette und eigenem Hot Tub; Frühstück kommt aufs Zimmer, abends auf Bestellung Eintopf. Achtung: liegt gut 1,2 km oberhalb des Weges — Zustieg über die steile Straße ab dem Inversnaid Hotel am Bunkhouse vorbei, rund 150 Höhenmeter.',
+    src: 'https://www.garrisonofinversnaid.co.uk', srcName: 'garrisonofinversnaid.co.uk'
+  },
+  {
+    stage: 'whw-3', type: 'hostel', name: 'Inversnaid Bunkhouse', lat: 56.2463, lng: -4.6715,
     text: 'Umgebaute Kirche ca. 800 m (bergauf) vom Way, mit kostenlosem Abhol-Service vom Trail. Bunkrooms, Twin-/Doppelzimmer, Restaurant/Bar mit Abendessen und Frühstück — dazu Platz für ca. 10 Zelte mit Nutzung aller Einrichtungen. Für August reservieren.',
     src: 'https://inversnaid.com/', srcName: 'inversnaid.com',
     photos: [{ url: 'https://www.westhighlandway.org/wp-content/uploads/2023/01/F5F7F264-9C9A-4E0D-82A5-35E317FE24EA-1024x768.jpeg', credit: 'Inversnaid Bunkhouse / westhighlandway.org' }]
@@ -90,7 +101,7 @@ window.CAMPS = [
 
   /* ---------- whw-3.5 ---------- */
   {
-    stage: 'whw-3.5', type: 'roof', name: 'The Drovers Inn (Inverarnan)', lat: 56.3283, lng: -4.7218,
+    stage: 'whw-3.5', type: 'hotel', name: 'The Drovers Inn (Inverarnan)', lat: 56.3283, lng: -4.7218,
     text: 'Legendäres Inn von 1705, fünf Minuten von Beinglas über die Fußbrücke: ausgestopfter Bär in der Lobby, Personal im Kilt, offene Feuer und oft Livemusik. Zimmer im historischen Haupthaus und in der moderneren Lodge gegenüber; Pub-Essen bis spät — auch als Abendessen vom Campingplatz aus lohnend.',
     src: 'https://www.droversinn.co.uk/', srcName: 'droversinn.co.uk',
     photos: [{ url: 'https://www.droversinn.co.uk/wp-content/uploads/2025/10/drovers-inn-preview.jpg', credit: 'The Drovers Inn' }, { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/The_Drovers_Inn%2C_Inverarnan_-_geograph.org.uk_-_2180895.jpg/1280px-The_Drovers_Inn%2C_Inverarnan_-_geograph.org.uk_-_2180895.jpg', credit: '© wfmillar, geograph.org.uk, CC BY-SA 2.0' }]
@@ -116,7 +127,22 @@ window.CAMPS = [
 
   /* ---------- whw-4 ---------- */
   {
-    stage: 'whw-4', type: 'roof', name: 'Crianlarich Youth Hostel (Hostelling Scotland)', lat: 56.3914, lng: -4.6164,
+    stage: 'whw-4', type: 'hotel', name: 'Best Western The Crianlarich Hotel', lat: 56.39308, lng: -4.61936,
+    text: '36 Zimmer mitten in Crianlarich, ganzjährig geöffnet, mit Restaurant und Bar mit offenem Kamin. Vom Weg rund 900 m Abstieg ins Dorf. Die verlässlichste Option, wenn Hostel und B&Bs ausgebucht sind — dafür deutlich teurer.',
+    src: 'https://www.bestwestern.com/en_US/book/hotels-in-crianlarich/best-western-crianlarich-hotel/propertyCode.83540.html', srcName: 'bestwestern.com'
+  },
+  {
+    stage: 'whw-4', type: 'hostel', name: 'Glenbruar House B&B (Crianlarich)', lat: 56.39314, lng: -4.61864,
+    text: 'Fünf Doppel- und Zweibettzimmer mit eigenem Bad, schottisches Frühstück inklusive. Den Trockenraum des Nachbarhotels darf man mitbenutzen, bei Direktbuchung gibt es einen Essensgutschein. Rund 900 m unterhalb des Weges im Dorf.',
+    src: 'https://www.glenbruar-crianlarich-bandb.co.uk/', srcName: 'glenbruar-crianlarich-bandb.co.uk'
+  },
+  {
+    stage: 'whw-4', type: 'hostel', name: 'Inverardran Guest House', lat: 56.38906, lng: -4.60564,
+    text: 'Familiengeführtes B&B mit zusätzlichen Cottage-Zimmern, allerdings 1,7 km östlich des Ortes an der A85 — nur mit Abholung oder Bahn wirklich sinnvoll. Die Betreiber schlagen selbst vor, zwei Nächte zu bleiben und per Zug ab Bridge of Orchy zurückzukommen.',
+    src: 'https://www.inverardran.co.uk/', srcName: 'inverardran.co.uk'
+  },
+  {
+    stage: 'whw-4', type: 'hostel', name: 'Crianlarich Youth Hostel (Hostelling Scotland)', lat: 56.3914, lng: -4.6164,
     text: 'SYHA-Hostel im Dorf, ca. 1 km Abstieg vom Way am „Halfway“-Kreuzungspunkt. Selbstversorgerküche, Drying Room, Privat- und Mehrbettzimmer; im Dorf Laden, Pub und Bahnhof (WHW-Ausstieg möglich). Praktisch, um die lange Etappe nach Tyndrum zu teilen.',
     src: 'https://www.hostellingscotland.org.uk/hostels/crianlarich/', srcName: 'hostellingscotland.org.uk',
     photos: [{ url: 'https://s0.geograph.org.uk/geophotos/05/64/00/5640029_fb984987.jpg', credit: '© Thomas Nugent, geograph.org.uk, CC BY-SA 2.0' }]
@@ -136,6 +162,41 @@ window.CAMPS = [
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Strathfillan_Wigwam_Village_-_geograph.org.uk_-_4958980.jpg/1280px-Strathfillan_Wigwam_Village_-_geograph.org.uk_-_4958980.jpg', credit: '© Tim Heaton, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
+    stage: 'whw-4.5', type: 'hostel', name: 'Ewich House B&B (Strathfillan)', lat: 56.41017, lng: -4.65532,
+    text: '4-Sterne-B&B von 1811 in großem Garten im Strathfillan, keine 300 m vom Weg und damit gut auf halber Strecke zwischen Crianlarich und Tyndrum gelegen.',
+    src: 'https://www.ewich.co.uk/wp/', srcName: 'ewich.co.uk'
+  },
+  {
+    stage: 'whw-4.5', type: 'hotel', name: 'Muthu Ben Doran Hotel (Tyndrum)', lat: 56.43590, lng: -4.71287,
+    text: 'Großes Hotel direkt am Weg — die Adresse lautet wörtlich „West Highland Way, Clifton, Tyndrum“. Bar, Spielzimmer, Frühstücksbuffet auch mit glutenfreien Optionen. Kettenhotel, entsprechend unpersönlich, aber fast immer verfügbar.',
+    src: 'https://www.muthuhotelsmgm.com/muthu-ben-doran-hotel.html', srcName: 'muthuhotelsmgm.com'
+  },
+  {
+    stage: 'whw-4.5', type: 'hotel', name: 'Muthu Royal Hotel (Tyndrum)', lat: 56.43457, lng: -4.71027,
+    text: 'Das zweite Haus der MGM-Muthu-Gruppe in Tyndrum, an der Lower Station Road rund 90 m vom Weg. Ähnliches Prinzip wie das Ben Doran: groß, solide, selten ausgebucht.',
+    src: 'https://www.muthuhotelsmgm.com/muthu-royal-hotel.html', srcName: 'muthuhotelsmgm.com'
+  },
+  {
+    stage: 'whw-4.5', type: 'hostel', name: 'Clifton Cottage (Tyndrum)', lat: 56.43781, lng: -4.71416,
+    text: 'Vier Zimmer mit eigenem Duschbad, am Ortsrand abseits der Hauptstraße und nur wenige Meter vom Weg. Frühstück kontinental, auf Wunsch Rührei mit Toast und Beans.',
+    src: 'https://cliftoncottage.com/', srcName: 'cliftoncottage.com'
+  },
+  {
+    stage: 'whw-4.5', type: 'hostel', name: 'Dalkell Cottage (Tyndrum)', lat: 56.43514, lng: -4.71108,
+    text: 'Kleines Gästehaus an der Lower Station Road, Zimmer einzeln buchbar. Telefon +44 1838 400285 — die eigene Website hatte zuletzt ein abgelaufenes Sicherheitszertifikat, daher besser telefonisch buchen.',
+    src: 'https://www.openstreetmap.org/', srcName: 'OpenStreetMap'
+  },
+  {
+    stage: 'whw-4.5', type: 'hostel', name: 'Tyndrum Lodges', lat: 56.43402, lng: -4.70868,
+    text: 'B&B-Zimmer, nächteweise buchbar, wenige Gehminuten zum Real Food Café und zum Bahnhof Upper Tyndrum.',
+    src: 'https://tyndrumlodges.co.uk/', srcName: 'tyndrumlodges.co.uk'
+  },
+  {
+    stage: 'whw-4.5', type: 'hostel', name: 'Tigh-na-Fraoch B&B (Tyndrum)', lat: 56.4366, lng: -4.7115,
+    text: 'Kleines familiengeführtes Gästehaus an einem Bach, Zimmer auf zwei Gebäude verteilt — im Kilbowie-Haus mit eigener Küchenzeile. Trockenraum und Wäscheständer vorhanden. Lage ungefähr (nur über die Postleitzahl bestimmt).',
+    src: 'https://www.tigh-na-fraoch.com/rooms', srcName: 'tigh-na-fraoch.com'
+  },
+  {
     stage: 'whw-4.5', type: 'camp', name: 'By The Way Hostel & Campsite (Tyndrum)', lat: 56.4342, lng: -4.7137,
     text: 'Hostel, Campingplatz, Pods und Hütten am alten Bahnhofsweg in Tyndrum — der Way läuft direkt vorbei. Gute Küche/Sanitär, Drying Room; im Ort Green Welly Stop, Brodies und Real Food Café zum Aufstocken. August: Hostelbetten früh buchen, Zeltwiese entspannter.',
     src: 'https://www.tyndrumbytheway.com/', srcName: 'tyndrumbytheway.com',
@@ -144,13 +205,28 @@ window.CAMPS = [
 
   /* ---------- whw-5 ---------- */
   {
-    stage: 'whw-5', type: 'roof', name: 'Bridge of Orchy Hotel', lat: 56.5175, lng: -4.7696,
+    stage: 'whw-5', type: 'hotel', name: 'Bridge of Orchy Hotel', lat: 56.5175, lng: -4.7696,
     text: 'Preisgekröntes Landhotel direkt am Trail: 32 Zimmer in Haupthaus und Annex, Bar und Restaurant — Abendessen auch für Durchwanderer. Das frühere Bunkhouse gibt es nicht mehr; günstige Betten bietet stattdessen der WHW Sleeper am Bahnhof. Für August lange im Voraus buchen.',
     src: 'https://www.bridgeoforchy.co.uk/', srcName: 'bridgeoforchy.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Bridge_of_Orchy_Hotel_-_geograph.org.uk_-_2025393.jpg/1280px-Bridge_of_Orchy_Hotel_-_geograph.org.uk_-_2025393.jpg', credit: '© Trevor Littlewood, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'whw-5', type: 'roof', name: 'West Highland Way Sleeper (Bahnhofs-Bunkhouse)', lat: 56.5164, lng: -4.7643,
+    stage: 'whw-5', type: 'hostel', name: 'Auch Estate Trail Cabins', lat: 56.4811, lng: -4.7231,
+    text: 'Zwei Kabinen mit einfachen En-suite-Zimmern (King oder Twin, je ca. 15 m²) direkt am Weg auf halber Strecke zwischen Tyndrum und Bridge of Orchy — der einzige Schlafplatz in diesem sonst leeren Abschnitt. Nächteweise buchbar, kontinentales Frühstück wird am Vorabend gestellt. Nur die Trail Cabins buchen; die Cottages des Estates gehen wochenweise. Lage ungefähr.',
+    src: 'https://auchestate.com/stay/', srcName: 'auchestate.com'
+  },
+  {
+    stage: 'whw-5', type: 'hostel', name: 'Greenstone Lodge B&B (Bridge of Orchy)', lat: 56.5174, lng: -4.7661,
+    text: 'Rein veganes B&B direkt am Weg, zwei En-suite-Zimmer (Twin und Doppel) mit je einem Trockenschrank. Abendessen und Lunchpakete auf Bestellung, gekocht von einem ehemaligen Head Chef. Lage ungefähr.',
+    src: 'https://www.greenstonelodge.co.uk/', srcName: 'greenstonelodge.co.uk'
+  },
+  {
+    stage: 'whw-5', type: 'hostel', name: 'Bridge of Orchy Pods', lat: 56.5168, lng: -4.7672,
+    text: 'Camping-Pods direkt am Weg in Bridge of Orchy, als günstige Alternative zum Hotel beworben. Bettenzahl, Preise und Sanitärausstattung standen auf der Website nicht — vorher anfragen. Lage ungefähr.',
+    src: 'https://www.bridgeoforchypods.co.uk/', srcName: 'bridgeoforchypods.co.uk'
+  },
+  {
+    stage: 'whw-5', type: 'hostel', name: 'West Highland Way Sleeper (Bahnhofs-Bunkhouse)', lat: 56.5164, lng: -4.7643,
     text: 'Bunkhouse im alten Bahnhofsgebäude von Bridge of Orchy, direkt am Bahnsteig: 10er-Schlafsaal (Bettwäsche inklusive) und 4-Bett-Zimmer en suite, ab ca. £35 p. P. Frühstück und Lunchpakete buchbar — oder 5 Minuten hinunter ins Hotel. Züge nach Glasgow und Fort William halten vor der Tür.',
     src: 'https://www.westhighlandwaysleeper.co.uk/', srcName: 'westhighlandwaysleeper.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Bridge_of_Orchy_Station_-_geograph.org.uk_-_5709276.jpg/1280px-Bridge_of_Orchy_Station_-_geograph.org.uk_-_5709276.jpg', credit: '© Euan Nelson, geograph.org.uk, CC BY-SA 2.0' }]
@@ -170,10 +246,15 @@ window.CAMPS = [
 
   /* ---------- whw-5.5 ---------- */
   {
-    stage: 'whw-5.5', type: 'roof', name: 'Inveroran Hotel', lat: 56.5329, lng: -4.8074,
+    stage: 'whw-5.5', type: 'hotel', name: 'Inveroran Hotel', lat: 56.5329, lng: -4.8074,
     text: 'Abgeschiedenes Drover-Gasthaus aus dem 19. Jahrhundert am Loch Tulla mit 9 Zimmern, Walkers\' Bar mit Abendessen und kleinem Shop für Snacks. Kaum Handyempfang. Saison ca. Ende März bis Mitte Oktober — einer der begehrtesten Stopps am WHW, Monate im Voraus buchen.',
     src: 'https://www.inveroran.com/', srcName: 'inveroran.com',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Approaching_the_Inveroran_Hotel_-_geograph.org.uk_-_4965172.jpg/1280px-Approaching_the_Inveroran_Hotel_-_geograph.org.uk_-_4965172.jpg', credit: '© Tim Heaton, geograph.org.uk, CC BY-SA 2.0' }]
+  },
+  {
+    stage: 'whw-5.5', type: 'wild', name: 'Inveroran Picknickwiese (Brücke)', lat: 56.535, lng: -4.8115,
+    text: 'Grasufer beiderseits der Brücke rund 400 m hinter dem Inveroran Hotel, daneben ein Picknickplatz mit Blick ins Glen — traditionell genutzte, informelle Zeltstelle. Wasser und Einkehr im Hotel. Lage ungefähr; die nächste Alternative (Victoria Bridge) liegt gut 1 km weiter.',
+    src: 'https://gingerroutes.com/bridge-of-orchy-inveroran/', srcName: 'gingerroutes.com'
   },
   {
     stage: 'whw-5.5', type: 'wild', name: 'Victoria Bridge / Forest Lodge', lat: 56.5398, lng: -4.8225,
@@ -184,13 +265,13 @@ window.CAMPS = [
 
   /* ---------- whw-6 ---------- */
   {
-    stage: 'whw-6', type: 'roof', name: 'Glencoe Mountain Microlodges', lat: 56.6318, lng: -4.8262,
+    stage: 'whw-6', type: 'hostel', name: 'Glencoe Mountain Microlodges', lat: 56.6318, lng: -4.8262,
     text: '16 „Hobbit“-Microlodges für 4–6 Personen mit Strom und Matratzen — Schlafsack mitbringen (Leihgebühr £5). Ab 2026 zusätzlich neue En-suite-Eco-Lodges mit WC und Waschbecken. Check-in ab 15 Uhr, Café an der Talstation; Buchung telefonisch (01855 851226).',
     src: 'https://www.glencoemountain.co.uk/accommodation/', srcName: 'glencoemountain.co.uk',
     photos: [{ url: 'https://www.glencoemountain.co.uk/wp-content/gallery/lodges/Glencoe-Mountain-Hobbits-Outside.jpg', credit: '© Glencoe Mountain Resort' }]
   },
   {
-    stage: 'whw-6', type: 'roof', name: 'Kingshouse Hotel & Bunkhouse', lat: 56.6515, lng: -4.8413,
+    stage: 'whw-6', type: 'hostel', name: 'Kingshouse Hotel & Bunkhouse', lat: 56.6515, lng: -4.8413,
     text: 'Das 2019 neu eröffnete Kingshouse hat neben Hotelzimmern einen eigenen Bunkhouse-Trakt: Betten in 2er-, 4er- und 6er-Zimmern ab £44 (£54 mit Frühstück), Bettwäsche inklusive, Gemeinschaftsküche, Trockenraum und Münz-Waschmaschine. Bar und Restaurant im Haupthaus — die einzige Einkehr zwischen Inveroran und Kinlochleven.',
     src: 'https://www.kingshousehotel.co.uk/bunkhouse', srcName: 'kingshousehotel.co.uk',
     photos: [{ url: 'https://www.kingshousehotel.co.uk/media/euwneaqg/kinghouse-hotel-entrance-at-night.jpg', credit: '© Kingshouse Hotel' }, { url: 'https://www.kingshousehotel.co.uk/media/ilobpudq/bunkhouse-boots.jpg', credit: '© Kingshouse Hotel' }]
@@ -216,13 +297,13 @@ window.CAMPS = [
 
   /* ---------- whw-7 ---------- */
   {
-    stage: 'whw-7', type: 'roof', name: 'West Highland Lodge Bunkhouse (Kinlochleven)', lat: 56.7115, lng: -4.9626,
+    stage: 'whw-7', type: 'hostel', name: 'West Highland Lodge Bunkhouse (Kinlochleven)', lat: 56.7115, lng: -4.9626,
     text: 'Bunkhouse in Hanglage über Kinlochleven mit Blick auf die Mamores (gleiche Betreiber wie das Blackwater Hostel): 8 private Mehrbettzimmer für bis zu 32 Personen, ab ca. £25 p. P. Selbstversorgerküche, TV-Raum, Trockenraum und WLAN — 5 Minuten vom Dorfzentrum.',
     src: 'https://blackwaterhostel.co.uk/west-highland-lodge/', srcName: 'blackwaterhostel.co.uk',
     photos: [{ url: 'https://www.westhighlandway.org/wp-content/uploads/2021/10/West-Highland-Lodge-Hostel-1024x683.jpg', credit: '© westhighlandway.org' }]
   },
   {
-    stage: 'whw-7', type: 'roof', name: 'Tailrace Inn (Kinlochleven)', lat: 56.715, lng: -4.9638,
+    stage: 'whw-7', type: 'hotel', name: 'Tailrace Inn (Kinlochleven)', lat: 56.715, lng: -4.9638,
     text: 'Pub mit 6 Zimmern mitten in Kinlochleven: Frühstück ab 7 Uhr, durchgehend warme Küche bis 20:30, Bar bis Mitternacht. Unkomplizierte, online buchbare Basis vor der langen Schlussetappe nach Fort William.',
     src: 'https://thetailraceinn.co.uk/', srcName: 'thetailraceinn.co.uk',
     photos: [{ url: 'https://thetailraceinn.co.uk/wp-content/uploads/2024/07/11320-The-Tailrace-Inn-025-scaled-1.jpg', credit: '© Tailrace Inn' }]
@@ -254,7 +335,7 @@ window.CAMPS = [
 
   /* ---------- whw-8 ---------- */
   {
-    stage: 'whw-8', type: 'roof', name: 'Glen Nevis Youth Hostel (Hostelling Scotland)', lat: 56.7997, lng: -5.0676,
+    stage: 'whw-8', type: 'hostel', name: 'Glen Nevis Youth Hostel (Hostelling Scotland)', lat: 56.7997, lng: -5.0676,
     text: 'Hostelling-Scotland-Haus direkt am River Nevis gegenüber dem Ben-Nevis-Aufstieg — letzter Schlafplatz an der Strecke vor dem Zieleinlauf in Fort William. Private Zimmer und Schlafsäle, Selbstversorgerküche und Trockenraum; für August früh buchen.',
     src: 'https://www.hostellingscotland.org.uk/hostels/glen-nevis/', srcName: 'hostellingscotland.org.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Glen_Nevis_Youth_Hostel_-_geograph.org.uk_-_5053961.jpg/1280px-Glen_Nevis_Youth_Hostel_-_geograph.org.uk_-_5053961.jpg', credit: '© Tim Heaton, geograph.org.uk, CC BY-SA 2.0' }]
@@ -274,7 +355,7 @@ window.CAMPS = [
 
   /* ---------- cwt-1 ---------- */
   {
-    stage: 'cwt-1', type: 'roof', name: 'Stage House Glenfinnan (ehem. Prince\'s House)', lat: 56.8732, lng: -5.4531,
+    stage: 'cwt-1', type: 'hostel', name: 'Stage House Glenfinnan (ehem. Prince\'s House)', lat: 56.8732, lng: -5.4531,
     text: 'Seit März 2025 führen zwei Schwestern das frühere Prince\'s House Hotel als B&B mit 9 Zimmern – 100 m nach dem Bahnhof Glenfinnan direkt an der A830. Nur Frühstück (im Preis), Lunchpakete auf Anfrage; Abendessen gibt es im Glenfinnan House Hotel im Ort.',
     src: 'https://www.glenfinnan.co.uk/', srcName: 'glenfinnan.co.uk',
     photos: [{ url: 'https://www.glenfinnan.co.uk/wp-content/uploads/2025/05/Stage-House-Glenfinnan-Home-Exterior-b.webp', credit: '© Stage House Glenfinnan' }]
@@ -320,6 +401,11 @@ window.CAMPS = [
     photos: [{ url: 'https://images.squarespace-cdn.com/content/v1/5856a80c2e69cfba3cc7205b/1714382659587-4R3O6HUGK48GWMV5L9DO/20240429_100843.jpg', credit: '© Barrisdale Estate' }, { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/82/Farm_buildings_and_bothy%2C_Barrisdale_-_geograph.org.uk_-_1960290.jpg/960px-Farm_buildings_and_bothy%2C_Barrisdale_-_geograph.org.uk_-_1960290.jpg', credit: '© Nic Bullivant, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
+    stage: 'cwt-3', type: 'bothy', name: 'Sourlies Bothy (MBA)', lat: 56.99738, lng: -5.5127,
+    text: 'Winziges MBA-Bothy direkt an der Bucht von Loch Nevis am Ausgang des Finiskaig-Tals — einer der abgelegensten Punkte der ganzen Tour. Nur ein Raum, kein Trinkwasser am Haus, keine Toilette. Die MBA notiert selbst: im Sommer oft voll, also sicherheitshalber Zelt mitnehmen. Der Uferstreifen davor eignet sich zum Zelten (Gezeiten beachten).',
+    src: 'https://www.mountainbothies.org.uk/bothies/western-highlands-islands/sourlies/', srcName: 'mountainbothies.org.uk'
+  },
+  {
     stage: 'cwt-3', type: 'wild', name: 'Sourlies / River Carnach', lat: 57.01, lng: -5.512,
     text: 'Wiesen am kleinen MBA-Bothy Sourlies und flussauf am River Carnach. Direkt hinter Sourlies führt der Weg ums Ufer – bei Flut ist die Umgehung der Landzunge überspült, dann über den Felsrücken klettern oder Ebbe abwarten. Gute Nachricht: Über den River Carnach gibt es inzwischen eine neue Fußgängerbrücke – die früher gefürchtete Furt entfällt.',
     src: 'https://www.mountainbothies.org.uk/bothies/western-highlands-islands/sourlies/', srcName: 'Mountain Bothies Association',
@@ -328,7 +414,7 @@ window.CAMPS = [
 
   /* ---------- cwt-4 ---------- */
   {
-    stage: 'cwt-4', type: 'roof', name: 'Lochhournhead B&B & Tea Room (Kinloch Hourn Farm)', lat: 57.1049, lng: -5.3852,
+    stage: 'cwt-4', type: 'hostel', name: 'Lochhournhead B&B & Tea Room (Kinloch Hourn Farm)', lat: 57.1049, lng: -5.3852,
     text: 'Kleines B&B („The Stables“) plus Self-Catering-Cottage der Familie Gordon direkt am Etappenziel, Saison ca. April–Oktober. Trockenraum, Frühstück, auf Vorbestellung Abendessen und Lunchpakete – vorab buchen (07904 127142).',
     src: 'https://lochhournhead.co.uk/', srcName: 'lochhournhead.co.uk',
     photos: [{ url: 'https://lochhournhead.co.uk/wp-content/uploads/2023/03/Home-Page.jpg', credit: '© Lochhournhead' }]
@@ -342,13 +428,13 @@ window.CAMPS = [
 
   /* ---------- cwt-4.5 ---------- */
   {
-    stage: 'cwt-4.5', type: 'roof', name: 'Ratagan Youth Hostel (Hostelling Scotland)', lat: 57.2224, lng: -5.4475,
+    stage: 'cwt-4.5', type: 'hostel', name: 'Ratagan Youth Hostel (Hostelling Scotland)', lat: 57.2224, lng: -5.4475,
     text: 'Hostel in Traumlage am Loch Duich mit Blick auf die Five Sisters, ca. 2 km vom CWT bei Shiel Bridge (Saison ca. April–Okt). Dorms und Privatzimmer, große Küche, Trockenraum, Basics und Fertiggerichte an der Rezeption – online buchen.',
     src: 'https://www.hostellingscotland.org.uk/hostels/ratagan/', srcName: 'Hostelling Scotland',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Ratagan_Youth_Hostel_-_geograph.org.uk_-_5707217.jpg/1280px-Ratagan_Youth_Hostel_-_geograph.org.uk_-_5707217.jpg', credit: '© Richard Sutcliffe, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'cwt-4.5', type: 'roof', name: 'Kintail Lodge Hotel (Invershiel)', lat: 57.2206, lng: -5.4178,
+    stage: 'cwt-4.5', type: 'hotel', name: 'Kintail Lodge Hotel (Invershiel)', lat: 57.2206, lng: -5.4178,
     text: 'Hotel direkt an der Route am Loch Duich mit Bar-Restaurant und Imbiss „Wee Bun House“ – ideal für ein richtiges Abendessen. Achtung: Die früheren Budget-Optionen Trekkers\' Lodge und Wee Bunkhouse werden nicht mehr angeboten, es gibt nur noch Hotelzimmer.',
     src: 'https://www.kintaillodgehotel.co.uk/', srcName: 'kintaillodgehotel.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Kintail_Lodge_Hotel_-_geograph.org.uk_-_2367859.jpg/1280px-Kintail_Lodge_Hotel_-_geograph.org.uk_-_2367859.jpg', credit: '© Glen Breaden, geograph.org.uk, CC BY-SA 2.0' }]
@@ -360,7 +446,7 @@ window.CAMPS = [
     photos: [{ url: 'https://glenshielcampsite.co.uk/wp-content/uploads/2022/08/Glensheil-Campsite-001A.jpg', credit: '© Glenshiel Campsite' }, { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Shiel_Bridge_campsite_-_geograph.org.uk_-_1962556.jpg/960px-Shiel_Bridge_campsite_-_geograph.org.uk_-_1962556.jpg', credit: '© Nic Bullivant, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'cwt-4.5', type: 'camp', name: 'Morvich (Caravan & Motorhome Club)', lat: 57.227, lng: -5.401,
+    stage: 'cwt-4.5', type: 'camp', name: 'Morvich (Caravan & Motorhome Club)', lat: 57.2357, lng: -5.38077,
     text: 'Gepflegter Club-Platz mit Zeltbereich, Duschen und Trockenraum – liegt direkt am CWT-Weiterweg durch Strath Croe (Nichtmitglieder-Aufschlag, Saison ca. März–Nov).',
     src: 'https://www.experiencefreedom.co.uk/locations/regions/scotland/highlands/morvich/', srcName: 'Caravan & Motorhome Club',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Morvich_Caravan_Club_Site_-_geograph.org.uk_-_4755192.jpg/1280px-Morvich_Caravan_Club_Site_-_geograph.org.uk_-_4755192.jpg', credit: '© Jo and Steve Turner, geograph.org.uk, CC BY-SA 2.0' }]
@@ -388,10 +474,20 @@ window.CAMPS = [
 
   /* ---------- cwt-6 ---------- */
   {
-    stage: 'cwt-6', type: 'roof', name: 'Gerry\'s Hostel (Craig, Achnashellach)', lat: 57.4909, lng: -5.2744,
+    stage: 'cwt-6', type: 'hostel', name: 'Gerry\'s Hostel (Craig, Achnashellach)', lat: 57.4909, lng: -5.2744,
     text: 'Schottlands ältestes unabhängiges Hostel, direkt am Etappenziel in Craig – ganzjährig offen, Hauptdorm 10 Betten plus Familienzimmer, Selbstversorgerküche und Lounge mit Feuer. Vorab über die Website oder Tel. 01520 766232 reservieren; kein Laden vor Ort, Proviant mitbringen.',
     src: 'https://gerryshostel.com/', srcName: 'gerryshostel.com',
     photos: [{ url: 'https://gerryshostel.com/wp-content/uploads/2019/06/img_3592.jpg', credit: '© Gerry\'s Hostel' }]
+  },
+  {
+    stage: 'cwt-6', type: 'camp', name: 'Achnashellach Campsite (Craig)', lat: 57.48414, lng: -5.31826,
+    text: 'Kleiner privater Zeltplatz bei Craig, keine 300 m vom Bahnhof Achnashellach (Bedarfshalt der Kyle Line) und damit der bequemste Ein- oder Ausstiegspunkt der Nordhälfte. Laut OSM ganzjährig offen, mit Trinkwasser und Toiletten, aber ohne Dusche.',
+    src: 'https://www.openstreetmap.org/way/1545108958', srcName: 'OpenStreetMap'
+  },
+  {
+    stage: 'cwt-6', type: 'bothy', name: 'Bearnais Bothy (MBA)', lat: 57.43433, lng: -5.29883,
+    text: 'MBA-Bothy im oberen Bearnais-Tal, rund 1,3 km abseits der Hauptlinie zwischen Bendronaig und Craig — eine gute Rückfallebene, wenn Bendronaig belegt ist. Nur zu Fuß erreichbar, kein Handyempfang. Während der Hirschjagd (Juli–Oktober) bittet die MBA um Rücksprache mit dem Attadale Estate.',
+    src: 'https://www.mountainbothies.org.uk/bothies/north-west-highlands-islands/bearnais/', srcName: 'mountainbothies.org.uk'
   },
   {
     stage: 'cwt-6', type: 'bothy', name: 'Bendronaig Lodge Bothy', lat: 57.3965, lng: -5.3076,
@@ -402,7 +498,7 @@ window.CAMPS = [
 
   /* ---------- cwt-7 ---------- */
   {
-    stage: 'cwt-7', type: 'roof', name: 'Kinlochewe Hotel & Bunkhouse', lat: 57.6041, lng: -5.3006,
+    stage: 'cwt-7', type: 'hostel', name: 'Kinlochewe Hotel & Bunkhouse', lat: 57.6041, lng: -5.3006,
     text: 'Hotel mit günstigem 12-Betten-Bunkhouse (Selbstversorgerküche, Trockenraum) am Etappenziel; Bar-Meals und Real Ales im Haus (01445 760253). Im Ort außerdem Whistle Stop Café und ein kleiner Laden mit Tankstelle zum Aufstocken der Vorräte.',
     src: 'https://www.kinlochewehotel.co.uk/', srcName: 'kinlochewehotel.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Kinlochewe_Hotel_-_geograph.org.uk_-_7467755.jpg', credit: '© Eirian Evans, geograph.org.uk, CC BY-SA 2.0' }]
@@ -412,6 +508,11 @@ window.CAMPS = [
     text: 'Kleiner, kostenloser Basis-Zeltplatz des Beinn Eighe National Nature Reserve bei Taagan Farm, ca. 2,5 km vor Kinlochewe Richtung Loch Maree. Keine Reservierung (first come, first served), nur einfachste Ausstattung – Einkauf und Essen dann in Kinlochewe.',
     src: 'https://capewrathtrailguide.org/accommodation/kinlochewe', srcName: 'Cape Wrath Trail Guide',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/4/40/The_campsite_at_Taagan_-_geograph.org.uk_-_490948.jpg', credit: '© Nigel Brown, geograph.org.uk, CC BY-SA 2.0' }]
+  },
+  {
+    stage: 'cwt-7', type: 'bothy', name: 'Easan Dorcha „The Teahouse“ (MBA)', lat: 57.51916, lng: -5.32158,
+    text: 'Winziges MBA-Bothy im Coulin-Wald, unter Wanderern schlicht „The Teahouse“ genannt — ein einziger Raum mit Kamin, gut 1,2 km abseits der Linie zwischen Craig und Kinlochewe. Als Regenpause oder Notquartier Gold wert, zum Schlafen nur für zwei bis drei Leute.',
+    src: 'https://www.mountainbothies.org.uk/bothies/north-west-highlands-islands/easan-dorcha-the-teahouse/', srcName: 'mountainbothies.org.uk'
   },
   {
     stage: 'cwt-7', type: 'bothy', name: 'Coire Fionnaraich Bothy', lat: 57.4762, lng: -5.42,
@@ -436,13 +537,13 @@ window.CAMPS = [
 
   /* ---------- cwt-9 ---------- */
   {
-    stage: 'cwt-9', type: 'roof', name: 'The Dundonnell Hotel', lat: 57.8416, lng: -5.221,
+    stage: 'cwt-9', type: 'hotel', name: 'The Dundonnell Hotel', lat: 57.8416, lng: -5.221,
     text: 'Familiengeführtes Hotel an der A832 am Little Loch Broom, ca. 2 km Abstecher von Corrie Hallie; Ensuite-Zimmer, Bar und Abendessen 18–20 Uhr, geöffnet März–Oktober (01854 633204). Das früher beliebte Sail Mhor Croft Hostel scheint dauerhaft geschlossen.',
     src: 'https://www.dundonnellhotel.co.uk/', srcName: 'dundonnellhotel.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/e/e4/Dundonnell_Hotel_-_geograph.org.uk_-_7535803.jpg', credit: '© Chris Morgan, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'cwt-9', type: 'roof', name: 'Forest Way B&B & Bunkhouse (Lael/Inverlael)', lat: 57.7834, lng: -5.0388,
+    stage: 'cwt-9', type: 'hostel', name: 'Forest Way B&B & Bunkhouse (Lael/Inverlael)', lat: 57.7834, lng: -5.0388,
     text: 'Kleines B&B mit Bunkhouse in Lael an der A835, wenige Kilometer vom Etappenziel Inverlael – wirbt ausdrücklich um Cape-Wrath-Trail-Wanderer. Buchung über forestway.co.uk; Alternative im Tal: Clachan Farmhouse B&B (nimmt Versorgungspakete an, Trockenraum).',
     src: 'https://forestway.co.uk/', srcName: 'forestway.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/6/6a/Inverlael_-_geograph.org.uk_-_231024.jpg', credit: '© Stuart Meek, geograph.org.uk, CC BY-SA 2.0' }]
@@ -456,7 +557,7 @@ window.CAMPS = [
 
   /* ---------- cwt-10 ---------- */
   {
-    stage: 'cwt-10', type: 'roof', name: 'Oykel Bridge Hotel', lat: 57.968, lng: -4.7324,
+    stage: 'cwt-10', type: 'hotel', name: 'Oykel Bridge Hotel', lat: 57.968, lng: -4.7324,
     text: 'Traditionsreiches Angler-Hotel direkt an der Brücke über den River Oykel, ganzjährig geöffnet – neben den Hotelzimmern gibt es einfachere, günstigere „Bothy Rooms“ für Wanderer. Bar mit warmem Essen (01549 441218). Letzte zuverlässige Einkehr vor Inchnadamph.',
     src: 'https://oykelbridgehotel.com/', srcName: 'oykelbridgehotel.com',
     photos: [{ url: 'https://oykelbridgehotel.com/wp-content/uploads/oykel-bridge-hotel-photo-49.jpg', credit: '© Oykel Bridge Hotel' }, { url: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Oykel_Bridge_Hotel_-_geograph.org.uk_-_4659273.jpg', credit: '© M J Richardson, geograph.org.uk, CC BY-SA 2.0' }]
@@ -482,13 +583,13 @@ window.CAMPS = [
 
   /* ---------- cwt-11 ---------- */
   {
-    stage: 'cwt-11', type: 'roof', name: 'Inchnadamph Explorers Lodge', lat: 58.1508, lng: -4.9714,
+    stage: 'cwt-11', type: 'hostel', name: 'Inchnadamph Explorers Lodge', lat: 58.1508, lng: -4.9714,
     text: 'Hostel und B&B in der denkmalgeschützten ehemaligen Manse am Etappenziel: Schlafsäle, Privatzimmer, Selbstversorgerküche – ideale, günstige Basis unter Conival und Ben More Assynt. Buchung online (inchnadamph.com); kein Laden im Weiler, Vorräte vorher organisieren.',
     src: 'https://www.inchnadamph.com/', srcName: 'inchnadamph.com',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/7/7e/Inchnadamph.jpg', credit: 'W. L. Tarbert, Wikimedia Commons, Public Domain' }]
   },
   {
-    stage: 'cwt-11', type: 'roof', name: 'Inchnadamph Hotel', lat: 58.1489, lng: -4.9719,
+    stage: 'cwt-11', type: 'hotel', name: 'Inchnadamph Hotel', lat: 58.1489, lng: -4.9719,
     text: 'Klassisches Highland-Hotel an der A837 am Loch Assynt, direkt gegenüber der Explorers Lodge – Zimmer mit Frühstück, Bar und Abendessen für den Zieltag der Mitte-Etappen (01571 822202).',
     src: 'https://www.inchnadamphhotel.com/', srcName: 'inchnadamphhotel.com',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/0/08/Inchnadamph_Hotel_and_environs_-_geograph.org.uk_-_5882068.jpg', credit: '© Ibn Musa, geograph.org.uk, CC BY-SA 2.0' }]
@@ -502,13 +603,18 @@ window.CAMPS = [
 
   /* ---------- cwt-12 ---------- */
   {
-    stage: 'cwt-12', type: 'roof', name: 'Kylesku Hotel', lat: 58.2572, lng: -5.0183,
+    stage: 'cwt-12', type: 'hotel', name: 'Kylesku Hotel', lat: 58.2572, lng: -5.0183,
     text: 'Boutique-Hotel (Highland Coast Hotels) direkt am alten Fähranleger von Kylesku, bekannt für Fisch- und Meeresfrüchte-Restaurant mit Blick auf Loch Glendhu. Einzige bookbare Unterkunft am Etappenziel — früh reservieren, an der NC500 stark nachgefragt.',
     src: 'https://www.kyleskuhotel.co.uk/', srcName: 'kyleskuhotel.co.uk',
     photos: [{ url: 'https://www.highlandcoasthotels.com/assets/images/Kylesku/_1200x630_crop_center-center_82_none/Kylesku_Exterior.jpg?mtime=1737476230', credit: '© Highland Coast Hotels / kyleskuhotel.co.uk' }, { url: 'https://upload.wikimedia.org/wikipedia/commons/6/6b/Kylesku_Hotel_-_geograph.org.uk_-_4016680.jpg', credit: '© Jim Barton, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'cwt-12', type: 'bothy', name: 'Glencoul & Glendhu Bothy (MBA)', lat: 58.2283, lng: -4.9461,
+    stage: 'cwt-12', type: 'bothy', name: 'Glendhu Bothy (MBA)', lat: 58.25859, lng: -4.9279,
+    text: 'Das zweite MBA-Bothy an den Assynt-Fjorden, am Kopf des Loch Glendhu und rund 4 km nördlich von Glencoul — die letzte Unterkunft vor Kylesku. Kein Trinkwasser am Haus. Während der Hirschjagd (12. Aug.–20. Okt.) bittet die MBA um Rücksprache mit dem Reay Forest Estate, +44 1971 502220 — das fällt genau in unseren Reisezeitraum!',
+    src: 'https://www.mountainbothies.org.uk/bothies/northern-highlands/glendhu/', srcName: 'mountainbothies.org.uk'
+  },
+  {
+    stage: 'cwt-12', type: 'bothy', name: 'Glencoul Bothy (MBA)', lat: 58.22807, lng: -4.94672,
     text: 'Zwei MBA-Bothies der Reay Forest Estate an den Fjordköpfen von Loch Glencoul und Loch Glendhu, je ca. 8 Schlafplätze auf Plattformen. Kein Brennholz außer Treibholz. Wichtig für August/September: In der Stalking-Saison (12. Aug.–20. Okt.) bittet die Estate um vorherigen Anruf (01971 500 221).',
     src: 'https://www.mountainbothies.org.uk/bothies/northern-highlands/glencoul/', srcName: 'Mountain Bothies Association',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/7/79/House_and_bothy%2C_Glencoul_%28geograph_4010388%29.jpg', credit: '© Jim Barton, geograph.org.uk, CC BY-SA 2.0' }, { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/85/Glendhu_Bothy_-_geograph.org.uk_-_4009143.jpg/1280px-Glendhu_Bothy_-_geograph.org.uk_-_4009143.jpg', credit: '© Jim Barton, geograph.org.uk, CC BY-SA 2.0' }]
@@ -522,7 +628,7 @@ window.CAMPS = [
 
   /* ---------- cwt-13 ---------- */
   {
-    stage: 'cwt-13', type: 'roof', name: 'Rhiconich Hotel', lat: 58.4239, lng: -4.9894,
+    stage: 'cwt-13', type: 'hotel', name: 'Rhiconich Hotel', lat: 58.4239, lng: -4.9894,
     text: 'Kleines Highland-Hotel an der A838 am Kopf von Loch Inchard, direkt am Etappenziel. Zimmer mit Frühstück, Bar mit einfachen Gerichten — praktisch als einzige Unterkunft direkt in Rhiconich, vorab buchen.',
     src: 'https://www.rhiconichhotel.co.uk/', srcName: 'rhiconichhotel.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Rhiconich_Hotel_-_geograph.org.uk_-_3684908.jpg/1280px-Rhiconich_Hotel_-_geograph.org.uk_-_3684908.jpg', credit: '© Tim Glover, geograph.org.uk, CC BY-SA 2.0' }]
@@ -536,13 +642,13 @@ window.CAMPS = [
 
   /* ---------- cwt-14 ---------- */
   {
-    stage: 'cwt-14', type: 'roof', name: 'Old School Restaurant & Rooms (Inshegra)', lat: 58.449, lng: -5.0023,
+    stage: 'cwt-14', type: 'hotel', name: 'Old School Restaurant & Rooms (Inshegra)', lat: 58.449, lng: -5.0023,
     text: 'Familiengeführtes Restaurant mit 6 Zimmern (teils en suite) in der alten Dorfschule von Inshegra an der B801 zwischen Rhiconich und Kinlochbervie — direkt an der Straßenetappe. Ganzjährig geöffnet, Restaurant ab 18 Uhr; Vorbuchung empfohlen (Tel. 01971 521383).',
     src: 'https://www.oldschoolhotel.co.uk/', srcName: 'oldschoolhotel.co.uk',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Cafe%2C_Inshegra_-_geograph.org.uk_-_6962589.jpg', credit: '© Richard Webb, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'cwt-14', type: 'roof', name: 'Kinlochbervie Hotel', lat: 58.4613, lng: -5.051,
+    stage: 'cwt-14', type: 'hotel', name: 'Kinlochbervie Hotel', lat: 58.4613, lng: -5.051,
     text: 'Hotel oberhalb des Fischereihafens von Kinlochbervie mit Restaurant und Bar, letzte größere Unterkunft vor Sandwood Bay und Cape Wrath. Im Ort gibt es zudem den Spar-Laden (London Stores, Badcall) — letzte Einkaufsmöglichkeit für Proviant bis Durness.',
     src: 'https://www.kinlochberviehotel.com/', srcName: 'kinlochberviehotel.com',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/6/68/Kinlochbervie_Hotel_-_geograph.org.uk_-_819603.jpg', credit: '© Anne Burgess, geograph.org.uk, CC BY-SA 2.0' }, { url: 'https://upload.wikimedia.org/wikipedia/commons/d/d2/Kinlochbervie_Harbour_-_geograph.org.uk_-_442794.jpg', credit: '© Bob Jones, geograph.org.uk, CC BY-SA 2.0' }]
@@ -568,6 +674,11 @@ window.CAMPS = [
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/a/a0/Oldshoremore_Beach_-_geograph.org.uk_-_443304.jpg', credit: '© Bob Jones, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
+    stage: 'cwt-14.5', type: 'bothy', name: 'Strathchailleach Bothy (MBA)', lat: 58.54466, lng: -5.00988,
+    text: 'MBA-Bothy rund 1,5 km nordöstlich der Sandwood Bay, berühmt als jahrzehntelanges Zuhause des Einsiedlers James McRory-Smith — seine Wandmalereien sind noch da. Letztes Dach vor Cape Wrath. Der Weg dorthin quert nasses Moor, bei Regen mühsam.',
+    src: 'https://www.mountainbothies.org.uk/bothies/northern-highlands/strathchailleach/', srcName: 'mountainbothies.org.uk'
+  },
+  {
     stage: 'cwt-14.5', type: 'wild', name: 'Sandwood Bay Dünen (John Muir Trust)', lat: 58.533, lng: -5.0609,
     text: 'Klassischer Wildzelt-Spot in den Dünen hinter dem 2 km langen Strand mit Blick auf den Sea Stack Am Buachaille — Land des John Muir Trust, Wildzelten toleriert. Keine Einrichtungen; Süßwasser aus Sandwood Loch bzw. Bächen (filtern), bei Windstille massive Midges, alles wieder mitnehmen.',
     src: 'https://www.johnmuirtrust.org/trust-land/sandwood', srcName: 'John Muir Trust',
@@ -576,19 +687,19 @@ window.CAMPS = [
 
   /* ---------- cwt-15 ---------- */
   {
-    stage: 'cwt-15', type: 'roof', name: 'Ozone Café & Bunkhouse (Cape Wrath Leuchtturm)', lat: 58.6255, lng: -4.9992,
+    stage: 'cwt-15', type: 'hostel', name: 'Ozone Café & Bunkhouse (Cape Wrath Leuchtturm)', lat: 58.6255, lng: -4.9992,
     text: 'Café mit einfachem Bunkhouse im ehemaligen Maschinenhaus (1905) direkt am Cape-Wrath-Leuchtturm — nach eigener Angabe 365 Tage im Jahr geöffnet; Übernachtung telefonisch buchen (01971 511 314). Perfekt, um das Trail-Ende zu feiern; weiter nach Durness per Minibus und Keoldale-Fähre (ca. Mai–Sep., gezeiten-, wetter- und MOD-abhängig).',
     src: 'https://www.visitcapewrath.com/around-cape-wrath/ozone-cafe/', srcName: 'visitcapewrath.com',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/7/7b/Cape_Wrath_Lighthouse_-_geograph.org.uk_-_6437064.jpg', credit: '© Colin Park, geograph.org.uk, CC BY-SA 2.0' }, { url: 'https://www.visitcapewrath.com/s/img/emotionheader.jpg', credit: '© visitcapewrath.com' }]
   },
   {
-    stage: 'cwt-15', type: 'roof', name: 'Lazy Crofter Bunkhouse (Durness)', lat: 58.568, lng: -4.7468,
+    stage: 'cwt-15', type: 'hostel', name: 'Lazy Crofter Bunkhouse (Durness)', lat: 58.568, lng: -4.7468,
     text: 'Kleines, gemütliches Bunkhouse der Familie Mackay im Zentrum von Durness, direkt gegenüber von Mackay\'s Rooms — beliebter Zielort für CWT-Finisher. Online buchbar über durnesshostel.com; Läden, Pub und Bushaltestelle fußläufig.',
     src: 'https://www.durnesshostel.com/', srcName: 'durnesshostel.com',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Lazy_Crofter_Bunkhouse_-_geograph.org.uk_-_1266245.jpg', credit: '© Colin Kinnear, geograph.org.uk, CC BY-SA 2.0' }]
   },
   {
-    stage: 'cwt-15', type: 'roof', name: 'Durness Youth Hostel (Hostelling Scotland, Smoo)', lat: 58.5637, lng: -4.7229,
+    stage: 'cwt-15', type: 'hostel', name: 'Durness Youth Hostel (Hostelling Scotland, Smoo)', lat: 58.5637, lng: -4.7229,
     text: 'Einfaches saisonales Hostel von Hostelling Scotland bei der Smoo Cave, ca. 1,5 km östlich des Dorfzentrums von Durness. Geöffnet etwa April–September; Rezeption 8–10 und 17–22 Uhr — günstigste Betten am Trail-Endpunkt.',
     src: 'https://www.hostellingscotland.org.uk/hostels/durness-smoo/', srcName: 'Hostelling Scotland',
     photos: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Durness_Smoo_Youth_Hostel.jpg/1280px-Durness_Smoo_Youth_Hostel.jpg', credit: '© Victuallers, Wikimedia Commons, CC BY-SA 4.0' }]
