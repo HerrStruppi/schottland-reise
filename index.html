@@ -759,23 +759,25 @@ function showVariants(ids) {
   }
 }
 
-/* ---------- Übernachtungs-Kandidaten ---------- */
-for (const c of (window.CAMPS || [])) {
+/* ---------- Übernachtungs-Kandidaten ----------
+   Keine Leaflet-Popups: Details erscheinen wie bei Orten in der Schublade,
+   damit Zurück-Navigation und Layout überall gleich funktionieren. */
+const campById = {};
+(window.CAMPS || []).forEach((c, i) => {
+  c.id = 'c' + i; campById[c.id] = c;
   const t = CAMP_TYPES[campType(c)];
   const m = L.marker([c.lat, c.lng], {
     icon: L.divIcon({ className: '', html: `<span class="campicon" style="background:${t.color}">${icon(t.icon)}</span>`, iconSize: [22, 22], iconAnchor: [11, 11] })
   }).addTo(map);
-  const ph = (c.photos && c.photos[0]) ? `<img class="pop-photo" loading="lazy" src="${c.photos[0].url}" alt="">` : '';
-  m.bindPopup(`<h3>${esc(c.name)}</h3>${ph}${esc(c.text)}` +
-    (c.src ? `<br><a href="${c.src}" target="_blank" rel="noopener">Quelle: ${esc(c.srcName || 'Link')}</a>` : ''),
-    { maxWidth: 260 });
-}
+  m.on('click', ev => { L.DomEvent.stopPropagation(ev); showCamp(c.id); });
+});
 
 /* ---------- Zeltstellen aus der OpenStreetMap-Community ----------
    Bewusst anders gezeichnet (klein, hell, gestrichelter Rand): Das sind
    fremde Einträge, keine eigene Recherche. Erst ab Zoom 12 sichtbar,
    sonst übertönen sie die kuratierten Punkte. */
-for (const c of (window.OSM_CAMPS || [])) {
+(window.OSM_CAMPS || []).forEach((c, i) => {
+  c.id = 'o' + i; campById[c.id] = c;
   const t = CAMP_TYPES[c.type] || CAMP_TYPES.wild;
   const m = L.marker([c.lat, c.lng], {
     icon: L.divIcon({
@@ -784,10 +786,8 @@ for (const c of (window.OSM_CAMPS || [])) {
       iconSize: [18, 18], iconAnchor: [9, 9]
     })
   }).addTo(map);
-  m.bindPopup(`<h3>${esc(c.name)}</h3>${esc(c.text)}` +
-    `<br><a href="https://www.openstreetmap.org/${c.osm}" target="_blank" rel="noopener">Eintrag in OpenStreetMap</a>`,
-    { maxWidth: 260 });
-}
+  m.on('click', ev => { L.DomEvent.stopPropagation(ev); showCamp(c.id); });
+});
 
 /* ---------- Orte ---------- */
 const placeById = {};
@@ -1331,7 +1331,7 @@ function renderStage(id, fly) {
     }
     h += osm.map(c => {
       const t = CAMP_TYPES[c.type] || CAMP_TYPES.wild;
-      return `<div class="row" onclick="zoomCamp(${c.lat},${c.lng})">
+      return `<div class="row" onclick="showCamp('${c.id}')">
         <div class="kicon" style="background:#fff;border:1.5px dashed ${t.color};color:${t.color}">${icon(t.icon)}</div>
         <div class="grow"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.text)}</div></div>
         <div class="meta">${c.d < 0.15 ? 'am Weg' : fmt(c.d) + ' km'}</div>
@@ -1350,10 +1350,6 @@ function renderStage(id, fly) {
     setTimeout(() => toast('Tipp: seitwärts wischen blättert durch die Etappen'), 900);
   }
 }
-window.zoomCamp = (lat, lng) => {
-  map.stop();
-  map.flyTo([lat, lng], 14, { duration: 0.7 });
-};
 window.zoomStop = (lat, lng) => {
   map.stop();
   map.flyTo([lat, lng], 12, { duration: 0.7 });
@@ -1419,7 +1415,7 @@ function renderLine(id) {
 const LOMOND_BYELAW = new Set(['whw-2', 'whw-2.5', 'whw-3', 'whw-3.5']);
 function campRow(c) {
   const t = CAMP_TYPES[campType(c)];
-  return `<div class="row" onclick="zoomCamp(${c.lat},${c.lng})">
+  return `<div class="row" onclick="showCamp('${c.id}')">
     <div class="kicon" style="background:${t.color}">${icon(t.icon)}</div>
     <div class="grow"><div class="t">${esc(c.name)}</div><div class="s">${esc(c.text)}
       ${c.src ? ` <a href="${c.src}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(c.srcName || 'Details')}</a>` : ''}</div></div>
@@ -1617,6 +1613,45 @@ const FACT_LABEL = {
   info: 'Information', water: 'Wasser & WC', transit: 'Anbindung'
 };
 
+/* Unterkunft in der Schublade – ersetzt die früheren Karten-Popups. */
+function renderCamp(id) {
+  const c = campById[id];
+  if (!c) return;
+  maybeSnap('half');
+  resetStyles();
+  map.stop();
+  map.flyTo([c.lat, c.lng], 14, { duration: 0.7 });
+  const t = CAMP_TYPES[campType(c)];
+  const iconStyle = c.osm
+    ? `background:#fff;border:1.5px dashed ${t.color};color:${t.color}`
+    : `background:${t.color}`;
+  let h = `<div class="topline">
+      ${backBtn()}
+      <span class="kicon" style="${iconStyle};width:26px;height:26px">${icon(t.icon)}</span>
+      <span class="chip">${esc(t.label)}</span>
+      ${c.osm ? '<span class="chip">OSM, ungeprüft</span>' : ''}
+      <span class="spacer"></span>
+    </div>
+    <h1>${esc(c.name)}</h1>`;
+  if (c.photos && c.photos[0]) {
+    h += `<img class="pop-photo" loading="lazy" src="${c.photos[0].url}" alt="" title="${esc(c.photos[0].credit || '')}">`;
+  }
+  h += `<p class="stagetext">${esc(c.text)}</p>`;
+  if (c.src) h += `<p class="stagetext"><a href="${c.src}" target="_blank" rel="noopener">${esc(c.srcName || 'Details')}</a></p>`;
+  if (c.osm) h += `<p class="stagetext"><a href="https://www.openstreetmap.org/${c.osm}" target="_blank" rel="noopener">Eintrag in OpenStreetMap</a></p>`;
+  const s = c.stage && stageLayers[c.stage];
+  if (s) {
+    const col = TRAIL_COLORS[s.trailKey];
+    h += `<h2>Etappe</h2><div class="row" onclick="showStage('${c.stage}')">
+      <div class="num" style="background:${col}">${c.stage.split('-')[1]}</div>
+      <div class="grow"><div class="t">${esc(s.stage.from)} → ${esc(s.stage.to)}</div></div>
+      ${icon('chevRight', 'chev')}
+    </div>`;
+  }
+  content.innerHTML = h;
+  content.scrollTop = 0;
+}
+
 /* ---------- Linienverlauf im Bahn-/Bus-Stil ----------
    Die früher separate Liste „Halte“ ist hier aufgegangen: Sie zeigt jetzt
    zusätzlich die ausgelassenen Zwischenhalte und die Etappen am Halt. */
@@ -1682,32 +1717,50 @@ function renderView(v) {
   if (v.t === 'stage') renderStage(v.id, !!prev);
   else if (v.t === 'line') renderLine(v.id);
   else if (v.t === 'place') renderPlace(v.id);
+  else if (v.t === 'camp') renderCamp(v.id);
   else if (v.t === 'variant') renderVariant(v.id);
   else if (v.t === 'vstage') renderVStage(v.id, !!prev);
   else renderOverview(!!prev);
   updateStageNav();
 }
+/* Gleiche Entität (Etappe -> Etappe, Ort -> Ort) ersetzt die aktuelle Ansicht,
+   statt sich in der Historie zu stapeln: Zurück führt dann zur Übersicht bzw.
+   zu dem, was man davor angeschaut hat – nicht zum vorherigen Ort.
+   Jeder Stapel-Schritt wird als echter History-Eintrag mitgeführt, damit auch
+   der Zurück-Button des Browsers/Systems durch die Ansichten läuft. */
+let histDepth = 0;
 function go(v) {
-  /* Gleiche Entität (Etappe -> Etappe) ersetzt die aktuelle Ansicht, statt sich
-     in der Historie zu stapeln: Zurück führt dann zur Übersicht bzw. zu dem,
-     was man davor angeschaut hat – nicht zur vorherigen Etappe. */
-  if (view && view.t !== v.t) viewStack.push(view);
-  if (viewStack.length > 20) viewStack.shift();
+  if (view && view.t !== v.t) {
+    viewStack.push(view);
+    if (viewStack.length > 20) viewStack.shift();
+    histDepth++;
+    try { history.pushState({ v, d: histDepth }, ''); } catch (e) { /* egal */ }
+  } else {
+    try { history.replaceState({ v, d: histDepth }, ''); } catch (e) { /* egal */ }
+  }
   renderView(v);
 }
+window.addEventListener('popstate', e => {
+  const s = (e.state && e.state.v) ? e.state : { v: { t: 'overview' }, d: 0 };
+  while (histDepth > s.d) { histDepth--; viewStack.pop(); }
+  if (histDepth < s.d) { viewStack.push(view); histDepth = s.d; }
+  renderView(s.v);
+});
 window.showStage = id => go({ t: 'stage', id });
 window.showLine = id => go({ t: 'line', id });
 window.showPlace = id => go({ t: 'place', id });
+window.showCamp = id => go({ t: 'camp', id });
 window.showVariant = id => go({ t: 'variant', id });
 window.showVStage = id => go({ t: 'vstage', id });
 window.showOverview = () => go({ t: 'overview' });
-window.goBack = () => renderView(viewStack.pop() || { t: 'overview' });
+window.goBack = () => { if (histDepth > 0) history.back(); else renderView({ t: 'overview' }); };
 function backBtn() {
   const p = viewStack[viewStack.length - 1];
   let label = 'Zur Übersicht';
   try {
     if (p && p.t === 'stage') label = 'Zurück zu ' + esc(shortStageName(stageLayers[p.id].stage));
     else if (p && p.t === 'place') label = 'Zurück zu ' + esc(placeById[p.id].name);
+    else if (p && p.t === 'camp') label = 'Zurück zu ' + esc(campById[p.id].name);
     else if (p && p.t === 'line') label = 'Zurück zu ' + esc(lineLayers[p.id].data.name);
     else if (p && p.t === 'variant') label = 'Zurück zu ' + esc(variantById[p.id].name);
     else if (p && p.t === 'vstage') label = 'Zurück zu ' + esc(vstageLayers[p.id].stage.from);
@@ -1746,6 +1799,8 @@ function updateStageNav() {
 
 document.getElementById('brand').addEventListener('click', () => {
   viewStack.length = 0;
+  histDepth = 0;
+  try { history.replaceState({ v: { t: 'overview' }, d: 0 }, ''); } catch (e) { /* egal */ }
   renderView({ t: 'overview' });
 });
 function fitAll(fly) {
@@ -1955,30 +2010,21 @@ function topoHtml() {
       <div class="progress"><i style="width:${pct}%"></i></div>
       <button class="offbtn" style="background:#5f6368" onclick="downloadTopo()">Abbrechen</button>
       <div class="tt-note">${TOPO.wait
-        ? `Der Kartenserver bittet um eine Pause – es geht in ca. ${TOPO.wait} s automatisch weiter.
-           So vermeiden wir, dass er uns länger sperrt.`
-        : `${TOPO.rate ? '≈ ' + TOPO.rate + ' Kacheln/s, ' : ''}${TOPO.conc} parallel –
-        das Tempo passt sich automatisch an, wie schnell der Kartenserver antwortet.
-        Die App darf offen bleiben.`}</div></div></div>`;
+        ? `Kartenserver bittet um Pause – weiter in ca. ${TOPO.wait} s.`
+        : (TOPO.rate ? '≈ ' + TOPO.rate + ' Kacheln/s' : '')}</div></div></div>`;
   }
   if (TOPO.state === 'ok') {
     return `<div class="offok">${icon('check')} Geländekarte offline · ${TOPO.total} Kacheln
       <a href="#" onclick="event.preventDefault();clearTopo()" style="color:var(--muted);margin-left:6px">löschen</a></div>`;
   }
-  const rest = TOPO.total - TOPO.done;
   const counts = topoCounts();
-  void rest;
   return `<div class="note${TOPO.state === 'partial' ? '' : ' warn'}">${icon(TOPO.state === 'partial' ? 'download' : 'warn')}<div>
     ${TOPO.state === 'partial'
-      ? `Geländekarte teilweise offline: ${TOPO.done} von ${TOPO.total} Kacheln (bis Zoom ${TOPO.maxZ}).${TOPO.err ? ' Zuletzt: ' + TOPO.err + ' – einfach später erneut starten.' : ''}`
-      : `Die Geländekarte ist noch nicht offline gespeichert – ohne Netz gibt es dann nur die einfachere Vektorkarte.`}
+      ? `Geländekarte teilweise offline: ${TOPO.done} von ${TOPO.total} Kacheln.${TOPO.err ? ' Zuletzt: ' + TOPO.err + '.' : ''}`
+      : `Geländekarte (Höhenlinien) noch nicht offline.`}
     <br><button class="offbtn" onclick="setTopoZoom(14)">Zoom 8–14 · ${est(counts[14])}</button>
     <button class="offbtn" onclick="setTopoZoom(15)" style="margin-left:6px">bis 15 · ${est(counts[15])}</button>
-    <button class="offbtn" onclick="setTopoZoom(16)" style="margin-left:6px">bis 16 · ${est(counts[16])}</button>
-    <div class="tt-note">Höhenlinien entlang der Route, ±1–3 km breit. Jede Stufe zeigt mehr Details und
-      bleibt beim Hineinzoomen scharf; Kacheln werden dabei sogar kleiner, weil weniger draufpasst.
-      Zoom 16 ist die feinste sinnvolle Stufe.
-      ${TOPO.state === 'partial' ? 'Bereits geladene Kacheln werden übersprungen.' : ''}</div></div></div>`;
+    <button class="offbtn" onclick="setTopoZoom(16)" style="margin-left:6px">bis 16 · ${est(counts[16])}</button></div></div>`;
 }
 function topoCounts() {
   const save = TOPO.maxZ, out = {};
