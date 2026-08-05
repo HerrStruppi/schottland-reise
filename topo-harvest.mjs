@@ -26,6 +26,9 @@ const UA = 'schottland-reise-offline-pack/1.0 (+https://github.com/HerrStruppi/s
 const CONC = 2;                                     // OSM-Tile-Policy: max. 2
 const PART_MAX = 88 * 1024 * 1024;                  // GitHub-Limit: 100 MB/Datei
 const BUILD = (process.env.GITHUB_SHA || 'dev').slice(0, 10) + '-' + new Date().toISOString().slice(0, 10);
+/* Zeitbudget: rechtzeitig VOR dem Job-Timeout sauber aufhören, damit der
+   Zwischenstand über den Actions-Cache in den nächsten Lauf gerettet wird. */
+const DEADLINE = Date.now() + (parseInt(process.env.TIME_BUDGET_MIN || '0', 10) || 1e6) * 60000;
 
 /* ---------- Kachelliste: identische Korridor-Logik wie früher in der App ---------- */
 function loadData(file) {
@@ -76,6 +79,7 @@ async function harvest(list) {
   async function worker() {
     for (;;) {
       const now = Date.now();
+      if (now > DEADLINE) break;
       if (now < pauseUntil) { await sleep(Math.min(1000, pauseUntil - now)); continue; }
       if (next >= todo.length) break;
       const idx = next++;
@@ -118,8 +122,7 @@ async function harvest(list) {
   }
   await Promise.all(Array.from({ length: CONC }, () => worker()));
   if (failed.length) {
-    console.error(`FEHLER: ${failed.length} Kacheln endgültig gescheitert:\n` + failed.slice(0, 20).join('\n'));
-    process.exit(1);
+    console.error(`${failed.length} Kacheln in diesem Lauf gescheitert (erste 20):\n` + failed.slice(0, 20).join('\n'));
   }
 }
 
@@ -171,4 +174,15 @@ function pack(list) {
 
 const list = tileList();
 await harvest(list);
+/* Nur packen, wenn wirklich alles da ist – sonst mit Fehlercode enden:
+   der Cache rettet den Zwischenstand, der nächste Lauf setzt fort. */
+const missing = list.filter(k => {
+  const f = path.join(RAW, k.replaceAll('/', '_') + '.png');
+  return !(fs.existsSync(f) && fs.statSync(f).size > 0);
+});
+if (missing.length) {
+  console.error(`${missing.length} von ${list.length} Kacheln fehlen noch – Pakete werden nicht gebaut. ` +
+    'Zwischenstand liegt in topo-tiles/ (Actions-Cache); der nächste Lauf setzt dort fort.');
+  process.exit(1);
+}
 pack(list);

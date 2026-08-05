@@ -27,8 +27,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Zwischenstand aus einem früheren (abgebrochenen) Lauf übernehmen
+      - uses: actions/cache/restore@v4
+        with:
+          path: topo-tiles
+          key: topo-tiles-v1-${{ github.run_id }}
+          restore-keys: topo-tiles-v1-
+
       - name: Kacheln laden und packen
         run: node topo-harvest.mjs
+        env:
+          TIME_BUDGET_MIN: "280"   # sauber aufhören, bevor timeout-minutes zuschlägt
+
+      # Auch bei Fehlschlag/Zeitbudget-Ende sichern – der nächste Lauf setzt fort
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: topo-tiles
+          key: topo-tiles-v1-${{ github.run_id }}
 
       - name: Pakete committen
         run: |
