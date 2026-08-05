@@ -39,12 +39,15 @@ Vektorkarte durch.
 
 Zum Download-Tempo: Der Engpass ist nicht die Leitung, sondern dass OpenTopoMap
 nicht vorhandene Kacheln erst rendert – fertige kommen in ~50 ms, frische
-brauchen bis zu 3,5 s. Die Parallelität regelt sich deshalb selbst nach
-Antwortzeit und Fehlercodes (429/503), zwischen 2 und 16 gleichzeitigen
-Anfragen. Gemessen: ~62 Kacheln/s in den unteren, breit zwischengespeicherten
-Zoomstufen, in den hohen deutlich weniger. Kachelgrößen sinken mit dem Zoom
-(z12 42 kB, z14 23 kB, z16 9 kB) – eine pauschale Schätzung überschätzt die
-hohen Stufen um mehr als das Doppelte.
+brauchen bis zu 3,5 s. Und der Server drosselt selbst: erst 429/503, bei
+anhaltendem Feuer eine minutenlange IP-Sperre. Die Parallelität regelt sich
+deshalb nach Antwortzeit und Fehlercodes, zwischen 2 und 8 gleichzeitigen
+Anfragen; bei 429/503/403 pausieren alle Verbindungen gemeinsam (3 s, 6 s, …
+bis 60 s, `Retry-After` wird respektiert) und die betroffene Kachel wird
+hinten neu eingereiht. Das ist unterm Strich schneller als stur weiterzufeuern,
+weil eine ausgelöste Sperre jeden Fortschritt minutenlang auf null setzt.
+Kachelgrößen sinken mit dem Zoom (z12 42 kB, z14 23 kB, z16 9 kB) – eine
+pauschale Schätzung überschätzt die hohen Stufen um mehr als das Doppelte.
 
 ## Installation & Updates
 

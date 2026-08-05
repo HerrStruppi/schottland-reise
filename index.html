@@ -1954,9 +1954,12 @@ function topoHtml() {
       (${fmtMb(TOPO.bytes)})
       <div class="progress"><i style="width:${pct}%"></i></div>
       <button class="offbtn" style="background:#5f6368" onclick="downloadTopo()">Abbrechen</button>
-      <div class="tt-note">${TOPO.rate ? '≈ ' + TOPO.rate + ' Kacheln/s, ' : ''}${TOPO.conc} parallel –
+      <div class="tt-note">${TOPO.wait
+        ? `Der Kartenserver bittet um eine Pause – es geht in ca. ${TOPO.wait} s automatisch weiter.
+           So vermeiden wir, dass er uns länger sperrt.`
+        : `${TOPO.rate ? '≈ ' + TOPO.rate + ' Kacheln/s, ' : ''}${TOPO.conc} parallel –
         das Tempo passt sich automatisch an, wie schnell der Kartenserver antwortet.
-        Die App darf offen bleiben.</div></div></div>`;
+        Die App darf offen bleiben.`}</div></div></div>`;
   }
   if (TOPO.state === 'ok') {
     return `<div class="offok">${icon('check')} Geländekarte offline · ${TOPO.total} Kacheln
@@ -1967,7 +1970,7 @@ function topoHtml() {
   void rest;
   return `<div class="note${TOPO.state === 'partial' ? '' : ' warn'}">${icon(TOPO.state === 'partial' ? 'download' : 'warn')}<div>
     ${TOPO.state === 'partial'
-      ? `Geländekarte teilweise offline: ${TOPO.done} von ${TOPO.total} Kacheln (bis Zoom ${TOPO.maxZ}).`
+      ? `Geländekarte teilweise offline: ${TOPO.done} von ${TOPO.total} Kacheln (bis Zoom ${TOPO.maxZ}).${TOPO.err ? ' Zuletzt: ' + TOPO.err + ' – einfach später erneut starten.' : ''}`
       : `Die Geländekarte ist noch nicht offline gespeichert – ohne Netz gibt es dann nur die einfachere Vektorkarte.`}
     <br><button class="offbtn" onclick="setTopoZoom(14)">Zoom 8–14 · ${est(counts[14])}</button>
     <button class="offbtn" onclick="setTopoZoom(15)" style="margin-left:6px">bis 15 · ${est(counts[15])}</button>
@@ -2169,18 +2172,21 @@ window.downloadTopo = async () => {
   const have = new Set(await idbKeys('topo'));
   const todo = list.filter(k => !have.has(k));
   TOPO.total = list.length; TOPO.done = list.length - todo.length;
-  TOPO.state = 'loading'; TOPO.cancel = false; TOPO.err = null;
+  TOPO.state = 'loading'; TOPO.cancel = false; TOPO.err = null; TOPO.wait = 0;
   renderOfflineRow();
 
-  /* Tempo regelt sich selbst statt nach fester Pause.
-     Der Engpass ist nicht die Leitung, sondern dass OpenTopoMap nicht
-     vorhandene Kacheln erst rechnen muss – fertige kommen in ~50 ms, frische
-     brauchen bis zu 3,5 s. Antwortzeit und Fehlercodes sind also das ehrliche
-     Signal dafür, wie viel der Server gerade verträgt: Wir gehen hoch, solange
-     er schnell antwortet, und sofort runter, wenn er langsam wird oder 429/503
-     schickt. Das ist schneller UND rücksichtsvoller als ein geratener Wert. */
-  const MAXC = 16, MINC = 2;
-  let target = 6, active = 0, next = 0, buf = [], lastPaint = 0;
+  /* Tempo regelt sich selbst – als Antwort auf den Server, nicht als geratene
+     Bremse. OpenTopoMap drosselt nämlich sehr wohl selbst: erst 429/503, bei
+     anhaltendem Feuer eine minutenlange Sperre der IP. Wer diese Signale
+     ignoriert, verlängert nur die Sperre und steht komplett still. Deshalb:
+     hochfahren, solange Antworten schnell kommen, und bei 429/503/403 alle
+     Worker GEMEINSAM pausieren (3 s, 6 s, … bis 60 s), die Kachel hinten
+     wieder einreihen. Vorsichtig wieder anfahren (30 s Schonfrist), damit es
+     kein Sägezahn aus Vollgas und Sperre wird. */
+  const MAXC = 8, MINC = 2;
+  let target = 4, active = 0, next = 0, buf = [], lastPaint = 0;
+  let pauseUntil = 0, backoff = 3000, cooldownUntil = 0, lastRamp = 0;
+  const tries = {};
   const lat = [];
   const SUB = ['a', 'b', 'c'];
   const flush = async () => { const b = buf; buf = []; if (b.length) await idbPutMany(b, 'topo'); };
@@ -2189,53 +2195,83 @@ window.downloadTopo = async () => {
     const s = [...lat].sort((a, b) => a - b);
     return s[Math.floor(s.length / 2)];
   };
+  const paint = force => {
+    if (!force && performance.now() - lastPaint < 500) return;
+    lastPaint = performance.now();
+    TOPO.conc = target;
+    TOPO.rate = TOPO.wait ? 0 : Math.round(1000 / Math.max(1, median() / Math.max(1, target)));
+    renderOfflineRow();
+  };
+  const serverPause = r => {
+    const ra = r && parseInt(r.headers.get('retry-after'), 10);
+    const wait = ra > 0 && ra <= 120 ? ra * 1000 : backoff;
+    backoff = Math.min(backoff * 2, 60000);
+    target = MINC;
+    pauseUntil = performance.now() + wait;
+    cooldownUntil = pauseUntil + 30000;
+  };
 
-  async function worker(w) {
-    while (next < todo.length && !TOPO.cancel) {
-      while (active >= target && !TOPO.cancel) await new Promise(r => setTimeout(r, 40));
+  async function worker() {
+    for (;;) {
       if (TOPO.cancel) break;
+      const now = performance.now();
+      if (now < pauseUntil) {
+        TOPO.wait = Math.ceil((pauseUntil - now) / 1000);
+        paint();
+        await new Promise(r => setTimeout(r, Math.min(500, pauseUntil - now)));
+        continue;
+      }
+      if (TOPO.wait) { TOPO.wait = 0; paint(true); }
+      if (active >= target) { await new Promise(r => setTimeout(r, 40)); continue; }
+      if (next >= todo.length) break;
       const idx = next++;
       const k = todo[idx];
       const [z, x, y] = k.split('/');
       active++;
+      const ctl = new AbortController();
+      const tm = setTimeout(() => ctl.abort(), 20000);
       const t0 = performance.now();
       try {
-        const r = await fetch(`https://${SUB[idx % 3]}.tile.opentopomap.org/${z}/${x}/${y}.png`);
-        const ms = performance.now() - t0;
-        lat.push(ms); if (lat.length > 40) lat.shift();
-        if (r.status === 429 || r.status === 503) {
-          target = Math.max(MINC, Math.floor(target / 2));
-          next--;                                   // Kachel später nochmal
-          await new Promise(res => setTimeout(res, 3000));
+        const r = await fetch(`https://${SUB[idx % 3]}.tile.opentopomap.org/${z}/${x}/${y}.png`, { signal: ctl.signal });
+        if (r.status === 429 || r.status === 503 || r.status === 403) {
+          serverPause(r);
+          if ((tries[k] = (tries[k] || 0) + 1) <= 6) todo.push(k);
+          else TOPO.err = 'Server drosselt (HTTP ' + r.status + ')';
         } else if (r.ok) {
+          lat.push(performance.now() - t0); if (lat.length > 40) lat.shift();
+          backoff = 3000;
           const b = await r.blob();
           buf.push([k, b]); TOPO.bytes += b.size; TOPO.done++;
           if (buf.length >= 32) await flush();
-          const m = median();
-          if (m && m < 250 && target < MAXC) target++;
+          const m = median(), n = performance.now();
+          if (m && m < 250 && target < MAXC && n > cooldownUntil && n - lastRamp > 1000) { target++; lastRamp = n; }
           else if (m > 1200 && target > MINC) target = Math.max(MINC, target - 2);
+        } else {
+          if ((tries[k] = (tries[k] || 0) + 1) <= 3) todo.push(k);
+          else TOPO.err = 'HTTP ' + r.status;
         }
       } catch (e) {
-        TOPO.err = e.message;
         target = Math.max(MINC, target - 2);
+        if ((tries[k] = (tries[k] || 0) + 1) <= 3) todo.push(k);
+        else TOPO.err = e.name === 'AbortError' ? 'Zeitüberschreitung' : e.message;
+      } finally {
+        clearTimeout(tm);
+        active--;
       }
-      active--;
-      TOPO.conc = target;
-      if (performance.now() - lastPaint > 500) {
-        TOPO.rate = Math.round(1000 / Math.max(1, median() / Math.max(1, target)));
-        lastPaint = performance.now();
-        renderOfflineRow();
-      }
+      paint();
     }
   }
   const t0 = performance.now();
-  await Promise.all(Array.from({ length: MAXC }, (_, i) => worker(i)));
-  await flush();
+  try {
+    await Promise.all(Array.from({ length: MAXC }, () => worker()));
+    await flush();
+  } catch (e) { TOPO.err = e.message; }
+  TOPO.wait = 0;
   TOPO.rate = Math.round(TOPO.done / ((performance.now() - t0) / 1000));
   TOPO.state = TOPO.cancel ? (TOPO.done ? 'partial' : 'missing')
     : (TOPO.done >= TOPO.total ? 'ok' : 'partial');
   renderOfflineRow();
-  if (!TOPO.cancel) toast('Geländekarte offline gespeichert');
+  if (!TOPO.cancel && TOPO.state === 'ok') toast('Geländekarte offline gespeichert');
   navigator.serviceWorker?.controller?.postMessage({ type: 'topo-updated' });
 };
 window.clearTopo = async () => {
