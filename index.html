@@ -1994,49 +1994,31 @@ function offlineHtml() {
   }
   return inner;
 }
-function topoBytes(list) {
-  return list.reduce((a, k) => a + (TOPO_KB[+k.split('/')[0]] || 25) * 1024, 0);
-}
 function topoHtml() {
-  const est = list => fmtMb(topoBytes(list));
   if (TOPO.state === 'unsupported') return '';
   if (TOPO.state === 'checking') {
     return `<div class="offok muted">${icon('download')} Geländekarte: prüfe Speicher …</div>`;
   }
+  if (TOPO.state === 'unavailable') {
+    return `<div class="offok muted">${icon('info')} Geländekarten-Paket noch nicht verfügbar</div>`;
+  }
   if (TOPO.state === 'loading') {
-    const pct = TOPO.total ? Math.floor(TOPO.done / TOPO.total * 100) : 0;
-    return `<div class="note">${icon('download')}<div>Geländekarte wird geladen … ${TOPO.done} / ${TOPO.total} Kacheln
-      (${fmtMb(TOPO.bytes)})
-      <div class="progress"><i style="width:${pct}%"></i></div>
-      <button class="offbtn" style="background:#5f6368" onclick="downloadTopo()">Abbrechen</button>
-      <div class="tt-note">${TOPO.wait
-        ? `Kartenserver bittet um Pause – weiter in ca. ${TOPO.wait} s.`
-        : (TOPO.rate ? '≈ ' + TOPO.rate + ' Kacheln/s' : '')}</div></div></div>`;
+    return `<div class="note">${icon('download')}<div>Geländekarte wird geladen … ${TOPO.pct} %
+      (${fmtMb(TOPO.bytes)} von ${fmtMb(TOPO.meta.size)})
+      <div class="progress"><i style="width:${TOPO.pct}%"></i></div>
+      <button class="offbtn" style="background:#5f6368" onclick="downloadTopo()">Abbrechen</button></div></div>`;
   }
   if (TOPO.state === 'ok') {
     return `<div class="offok">${icon('check')} Geländekarte offline · ${TOPO.total} Kacheln
       <a href="#" onclick="event.preventDefault();clearTopo()" style="color:var(--muted);margin-left:6px">löschen</a></div>`;
   }
-  const counts = topoCounts();
+  const size = TOPO.meta ? fmtMb(TOPO.meta.size) : '';
   return `<div class="note${TOPO.state === 'partial' ? '' : ' warn'}">${icon(TOPO.state === 'partial' ? 'download' : 'warn')}<div>
     ${TOPO.state === 'partial'
-      ? `Geländekarte teilweise offline: ${TOPO.done} von ${TOPO.total} Kacheln.${TOPO.err ? ' Zuletzt: ' + TOPO.err + '.' : ''}`
+      ? `Geländekarte teilweise offline${TOPO.total ? `: ${TOPO.done} von ${TOPO.total} Kacheln` : ''}.${TOPO.err ? ' Zuletzt: ' + TOPO.err + '.' : ''}`
       : `Geländekarte (Höhenlinien) noch nicht offline.`}
-    <br><button class="offbtn" onclick="setTopoZoom(14)">Zoom 8–14 · ${est(counts[14])}</button>
-    <button class="offbtn" onclick="setTopoZoom(15)" style="margin-left:6px">bis 15 · ${est(counts[15])}</button>
-    <button class="offbtn" onclick="setTopoZoom(16)" style="margin-left:6px">bis 16 · ${est(counts[16])}</button></div></div>`;
+    ${TOPO.meta ? `<br><button class="offbtn" onclick="downloadTopo()">${TOPO.state === 'partial' ? 'Weiterladen' : 'Jetzt laden'}${size ? ' (' + size + ')' : ''}</button>` : ''}</div></div>`;
 }
-function topoCounts() {
-  const save = TOPO.maxZ, out = {};
-  for (const z of [14, 15, 16]) { TOPO.maxZ = z; out[z] = topoTileList(); }
-  TOPO.maxZ = save;
-  return out;
-}
-window.setTopoZoom = z => {
-  TOPO.maxZ = z;
-  localStorage.setItem('topo.maxz', String(z));
-  downloadTopo();
-};
 function renderOfflineRow() {
   const el = document.getElementById('offlineRow');
   if (el) el.innerHTML = offlineHtml();
@@ -2164,166 +2146,110 @@ async function downloadPkg() {
 }
 
 /* ================= Geländekarte offline =================
-   Die Kacheln von OpenTopoMap liegen als Blobs in IndexedDB (nicht im Cache
-   Storage – den räumt iOS unter Speicherdruck weg) und werden vom Service
-   Worker von dort ausgeliefert. Gespeichert wird nur ein Korridor um die
-   Route, nach oben hin schmaler: bei z15 ±1,5 km, bei z10 ±3 km. */
-const TOPO_ZOOMS = [[8, 0], [9, 0], [10, 3], [11, 3], [12, 3], [13, 2.5], [14, 2], [15, 1.5], [16, 1]];
-/* Gemessene Durchschnittsgrößen im Hochland. Kacheln werden mit steigendem
-   Zoom KLEINER, weil weniger Inhalt draufpasst – eine pauschale Schätzung
-   überschätzt die hohen Stufen um mehr als das Doppelte. */
-const TOPO_KB = { 8: 45, 9: 45, 10: 45, 11: 44, 12: 42, 13: 33, 14: 23, 15: 14, 16: 9 };
-const TOPO = {
-  state: 'checking', done: 0, total: 0, bytes: 0, cancel: false, err: null,
-  maxZ: +localStorage.getItem('topo.maxz') || 15,
-  rate: 0, conc: 6
-};
-const topoListCache = {};
-function topoTileList() {
-  if (topoListCache[TOPO.maxZ]) return topoListCache[TOPO.maxZ];
-  const out = [];
-  const pts = [];
-  for (const id in stageLayers) for (const c of stageLayers[id].stage.coords) pts.push(c);
-  for (const p of (window.PLACES || [])) pts.push([p.lat, p.lng]);
-  for (const [z, bufKm] of TOPO_ZOOMS) {
-    if (z > TOPO.maxZ) continue;
-    const n = 2 ** z, set = new Set();
-    const tileKm = 40075 * Math.cos(57 * Math.PI / 180) / n;
-    const r = Math.ceil(bufKm / tileKm);
-    for (const c of pts) {
-      const x = Math.floor((c[1] + 180) / 360 * n);
-      const lat = c[0] * Math.PI / 180;
-      const y = Math.floor((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2 * n);
-      for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) set.add((x + dx) + '/' + (y + dy));
-    }
-    for (const k of set) out.push(z + '/' + k);
-  }
-  topoListCache[TOPO.maxZ] = out;
-  return out;
+   Die Kacheln kommen NICHT mehr einzeln von OpenTopoMap: Der Routen-Korridor
+   (z8–16) wurde einmal eingesammelt (topo-harvest.mjs) und liegt als wenige
+   .tpk-Pakete auf unserem eigenen Hosting neben der App. Hier werden sie nur
+   noch heruntergeladen und in IndexedDB entpackt (Schlüssel "z/x/y", der
+   Service Worker liefert sie von dort aus) – keine Drosselung, kein Warten.
+   tiles/topo-meta.json beschreibt Teile, Größen und Build-Stand.
+   Paketformat: "TPK1" | uint32-LE Indexlänge | Index-JSON [[key,len],…] | PNGs. */
+const TOPO = { state: 'checking', done: 0, total: 0, bytes: 0, pct: 0, cancel: false, err: null, meta: null };
+function topoParts() {
+  const saved = JSON.parse(localStorage.getItem('topo.parts') || 'null');
+  return (saved && TOPO.meta && saved.build === TOPO.meta.build)
+    ? saved.done : (TOPO.meta ? TOPO.meta.parts.map(() => false) : []);
 }
 async function topoCheck() {
   if (!('indexedDB' in window) || location.protocol === 'file:') { TOPO.state = 'unsupported'; return; }
   try {
-    const have = new Set(await idbKeys('topo'));
-    const list = topoTileList();
-    TOPO.total = list.length;
-    TOPO.done = list.reduce((a, k) => a + (have.has(k) ? 1 : 0), 0);
-    TOPO.state = TOPO.done >= TOPO.total ? 'ok' : TOPO.done ? 'partial' : 'missing';
+    if (!TOPO.meta) {
+      try { TOPO.meta = await (await fetch('tiles/topo-meta.json', { cache: 'no-store' })).json(); }
+      catch (e) { /* offline oder Paket noch nicht veröffentlicht */ }
+    }
+    const have = (await idbKeys('topo')).length;
+    if (TOPO.meta) {
+      TOPO.total = TOPO.meta.tiles;
+      TOPO.done = Math.min(have, TOPO.total);
+      TOPO.state = topoParts().every(Boolean) ? 'ok' : (have ? 'partial' : 'missing');
+    } else {
+      TOPO.total = +localStorage.getItem('topo.total') || 0;
+      TOPO.done = TOPO.total ? Math.min(have, TOPO.total) : have;
+      TOPO.state = !have ? 'unavailable'
+        : (TOPO.total && have >= TOPO.total ? 'ok' : 'partial');
+    }
   } catch (e) { TOPO.state = 'missing'; }
   renderOfflineRow();
 }
-window.downloadTopo = async () => {
-  if (TOPO.state === 'loading') { TOPO.cancel = true; return; }
-  const list = topoTileList();
-  const have = new Set(await idbKeys('topo'));
-  const todo = list.filter(k => !have.has(k));
-  TOPO.total = list.length; TOPO.done = list.length - todo.length;
-  TOPO.state = 'loading'; TOPO.cancel = false; TOPO.err = null; TOPO.wait = 0;
-  renderOfflineRow();
-
-  /* Tempo regelt sich selbst – als Antwort auf den Server, nicht als geratene
-     Bremse. OpenTopoMap drosselt nämlich sehr wohl selbst: erst 429/503, bei
-     anhaltendem Feuer eine minutenlange Sperre der IP. Wer diese Signale
-     ignoriert, verlängert nur die Sperre und steht komplett still. Deshalb:
-     hochfahren, solange Antworten schnell kommen, und bei 429/503/403 alle
-     Worker GEMEINSAM pausieren (3 s, 6 s, … bis 60 s), die Kachel hinten
-     wieder einreihen. Vorsichtig wieder anfahren (30 s Schonfrist), damit es
-     kein Sägezahn aus Vollgas und Sperre wird. */
-  const MAXC = 8, MINC = 2;
-  let target = 4, active = 0, next = 0, buf = [], lastPaint = 0;
-  let pauseUntil = 0, backoff = 3000, cooldownUntil = 0, lastRamp = 0;
-  const tries = {};
-  const lat = [];
-  const SUB = ['a', 'b', 'c'];
-  const flush = async () => { const b = buf; buf = []; if (b.length) await idbPutMany(b, 'topo'); };
-  const median = () => {
-    if (lat.length < 6) return 0;
-    const s = [...lat].sort((a, b) => a - b);
-    return s[Math.floor(s.length / 2)];
-  };
-  const paint = force => {
-    if (!force && performance.now() - lastPaint < 500) return;
-    lastPaint = performance.now();
-    TOPO.conc = target;
-    TOPO.rate = TOPO.wait ? 0 : Math.round(1000 / Math.max(1, median() / Math.max(1, target)));
-    renderOfflineRow();
-  };
-  const serverPause = r => {
-    const ra = r && parseInt(r.headers.get('retry-after'), 10);
-    const wait = ra > 0 && ra <= 120 ? ra * 1000 : backoff;
-    backoff = Math.min(backoff * 2, 60000);
-    target = MINC;
-    pauseUntil = performance.now() + wait;
-    cooldownUntil = pauseUntil + 30000;
-  };
-
-  async function worker() {
-    for (;;) {
-      if (TOPO.cancel) break;
-      const now = performance.now();
-      if (now < pauseUntil) {
-        TOPO.wait = Math.ceil((pauseUntil - now) / 1000);
-        paint();
-        await new Promise(r => setTimeout(r, Math.min(500, pauseUntil - now)));
-        continue;
-      }
-      if (TOPO.wait) { TOPO.wait = 0; paint(true); }
-      if (active >= target) { await new Promise(r => setTimeout(r, 40)); continue; }
-      if (next >= todo.length) break;
-      const idx = next++;
-      const k = todo[idx];
-      const [z, x, y] = k.split('/');
-      active++;
-      const ctl = new AbortController();
-      const tm = setTimeout(() => ctl.abort(), 20000);
-      const t0 = performance.now();
-      try {
-        const r = await fetch(`https://${SUB[idx % 3]}.tile.opentopomap.org/${z}/${x}/${y}.png`, { signal: ctl.signal });
-        if (r.status === 429 || r.status === 503 || r.status === 403) {
-          serverPause(r);
-          if ((tries[k] = (tries[k] || 0) + 1) <= 6) todo.push(k);
-          else TOPO.err = 'Server drosselt (HTTP ' + r.status + ')';
-        } else if (r.ok) {
-          lat.push(performance.now() - t0); if (lat.length > 40) lat.shift();
-          backoff = 3000;
-          const b = await r.blob();
-          buf.push([k, b]); TOPO.bytes += b.size; TOPO.done++;
-          if (buf.length >= 32) await flush();
-          const m = median(), n = performance.now();
-          if (m && m < 250 && target < MAXC && n > cooldownUntil && n - lastRamp > 1000) { target++; lastRamp = n; }
-          else if (m > 1200 && target > MINC) target = Math.max(MINC, target - 2);
-        } else {
-          if ((tries[k] = (tries[k] || 0) + 1) <= 3) todo.push(k);
-          else TOPO.err = 'HTTP ' + r.status;
-        }
-      } catch (e) {
-        target = Math.max(MINC, target - 2);
-        if ((tries[k] = (tries[k] || 0) + 1) <= 3) todo.push(k);
-        else TOPO.err = e.name === 'AbortError' ? 'Zeitüberschreitung' : e.message;
-      } finally {
-        clearTimeout(tm);
-        active--;
-      }
-      paint();
+/* Ein Paketteil in Einzelkacheln zerlegen und nach IndexedDB schreiben.
+   Blob.slice kopiert nichts – erst idbPutMany materialisiert die Bytes. */
+async function unpackTopoPart(blob) {
+  const head = new DataView(await blob.slice(0, 8).arrayBuffer());
+  if (head.getUint32(0) !== 0x54504b31) throw new Error('Paketformat unbekannt');
+  const idxLen = head.getUint32(4, true);
+  const index = JSON.parse(await blob.slice(8, 8 + idxLen).text());
+  let off = 8 + idxLen, batch = [];
+  for (const [key, len] of index) {
+    batch.push([key, blob.slice(off, off + len, 'image/png')]);
+    off += len;
+    if (batch.length >= 64) {
+      await idbPutMany(batch, 'topo');
+      TOPO.done += batch.length; batch = [];
+      renderOfflineRow();
     }
   }
-  const t0 = performance.now();
-  try {
-    await Promise.all(Array.from({ length: MAXC }, () => worker()));
-    await flush();
-  } catch (e) { TOPO.err = e.message; }
-  TOPO.wait = 0;
-  TOPO.rate = Math.round(TOPO.done / ((performance.now() - t0) / 1000));
-  TOPO.state = TOPO.cancel ? (TOPO.done ? 'partial' : 'missing')
-    : (TOPO.done >= TOPO.total ? 'ok' : 'partial');
+  if (batch.length) { await idbPutMany(batch, 'topo'); TOPO.done += batch.length; }
+  TOPO.bytes += blob.size;
+}
+window.downloadTopo = async () => {
+  if (TOPO.state === 'loading') { TOPO.cancel = true; return; }
+  if (!TOPO.meta) { await topoCheck(); if (!TOPO.meta) return; }
+  const meta = TOPO.meta;
+  const done = topoParts();
+  TOPO.state = 'loading'; TOPO.cancel = false; TOPO.err = null;
+  TOPO.total = meta.tiles;
+  TOPO.done = done.reduce((a, d, i) => a + (d ? meta.parts[i].tiles : 0), 0);
+  let gotBytes = done.reduce((a, d, i) => a + (d ? meta.parts[i].size : 0), 0);
+  TOPO.bytes = gotBytes;
+  TOPO.pct = Math.floor(gotBytes / meta.size * 100);
   renderOfflineRow();
-  if (!TOPO.cancel && TOPO.state === 'ok') toast('Geländekarte offline gespeichert');
+  try {
+    for (let i = 0; i < meta.parts.length && !TOPO.cancel; i++) {
+      if (done[i]) continue;
+      const part = meta.parts[i];
+      const resp = await fetch('tiles/' + part.file + '?v=' + encodeURIComponent(meta.build), { cache: 'no-store' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const reader = resp.body.getReader();
+      const chunks = []; let got = 0, lastPct = -1;
+      for (;;) {
+        const { done: rd, value } = await reader.read();
+        if (rd) break;
+        if (TOPO.cancel) { reader.cancel(); break; }
+        chunks.push(value); got += value.length;
+        const pct = Math.min(99, Math.floor((gotBytes + got) / meta.size * 100));
+        if (pct !== lastPct) { lastPct = pct; TOPO.pct = pct; renderOfflineRow(); }
+      }
+      if (TOPO.cancel) break;
+      if (part.size && got !== part.size) throw new Error('unvollständig (' + fmtMb(got) + ')');
+      TOPO.bytes = gotBytes;                      // unpackTopoPart zählt den Teil dazu
+      await unpackTopoPart(new Blob(chunks));
+      chunks.length = 0;
+      done[i] = true;
+      localStorage.setItem('topo.parts', JSON.stringify({ build: meta.build, done }));
+      gotBytes += part.size;
+    }
+  } catch (e) { TOPO.err = e.message; }
+  localStorage.setItem('topo.total', String(meta.tiles));
+  TOPO.state = done.every(Boolean) ? 'ok' : (TOPO.done ? 'partial' : 'missing');
+  renderOfflineRow();
+  if (TOPO.state === 'ok') toast('Geländekarte offline gespeichert');
   navigator.serviceWorker?.controller?.postMessage({ type: 'topo-updated' });
 };
 window.clearTopo = async () => {
   if (!confirm('Alle gespeicherten Geländekacheln löschen?')) return;
   await idbClear('topo');
-  TOPO.done = 0; TOPO.bytes = 0; TOPO.state = 'missing';
+  localStorage.removeItem('topo.parts');
+  localStorage.removeItem('topo.total');
+  TOPO.done = 0; TOPO.bytes = 0; TOPO.state = TOPO.meta ? 'missing' : 'unavailable';
   renderOfflineRow();
 };
 

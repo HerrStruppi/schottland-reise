@@ -31,23 +31,25 @@ Speicherdruck geleert, IndexedDB nicht):
 |---|---|---|
 | App, Daten, Fotos | ca. 40 MB | automatisch beim ersten Start |
 | Vektorkarte (`tiles/scotland.pmtiles`) | 92 MB | automatisch; deckt die **ganze Region** in allen Zoomstufen ab |
-| Geländekarte (OpenTopoMap-Raster) | 94 MB (Z8–14), 180 MB (bis Z15), 323 MB (bis Z16) | Knopf in der Übersicht; nur ein **Korridor von ±1–3 km** um die Route |
+| Geländekarte (OpenTopoMap-Raster) | ~330 MB (Z8–16) | Knopf in der Übersicht; **Korridor von ±1–3 km** um die Route, als Pakete vom eigenen Hosting |
 
 Die Geländekarte ist zum Wandern die bessere (Höhenlinien), die Vektorkarte die
 vollständigere. Wo keine Geländekachel gespeichert ist, scheint automatisch die
 Vektorkarte durch.
 
-Zum Download-Tempo: Der Engpass ist nicht die Leitung, sondern dass OpenTopoMap
-nicht vorhandene Kacheln erst rendert – fertige kommen in ~50 ms, frische
-brauchen bis zu 3,5 s. Und der Server drosselt selbst: erst 429/503, bei
-anhaltendem Feuer eine minutenlange IP-Sperre. Die Parallelität regelt sich
-deshalb nach Antwortzeit und Fehlercodes, zwischen 2 und 8 gleichzeitigen
-Anfragen; bei 429/503/403 pausieren alle Verbindungen gemeinsam (3 s, 6 s, …
-bis 60 s, `Retry-After` wird respektiert) und die betroffene Kachel wird
-hinten neu eingereiht. Das ist unterm Strich schneller als stur weiterzufeuern,
-weil eine ausgelöste Sperre jeden Fortschritt minutenlang auf null setzt.
-Kachelgrößen sinken mit dem Zoom (z12 42 kB, z14 23 kB, z16 9 kB) – eine
-pauschale Schätzung überschätzt die hohen Stufen um mehr als das Doppelte.
+Die Geländekacheln kommen **nicht** mehr einzeln von OpenTopoMap: Deren
+Gemeinschaftsserver drosselt (429/503 bis hin zur IP-Sperre), was Downloads
+langsam und abbruchanfällig machte. Stattdessen sammelt der Workflow
+„Geländekarte einsammeln“ (`.github/workflows/harvest-topo.yml` →
+`topo-harvest.mjs`) den Korridor **einmal** höflich ein (2 Verbindungen,
+OSM-Tile-Policy) und committet ihn als wenige `tiles/topo-pack-*.tpk`-Pakete
+(je ≤ 90 MB wegen GitHub-Dateilimit) plus `tiles/topo-meta.json`. Die App
+lädt nur noch diese Pakete vom eigenen Pages-Hosting und entpackt sie in
+IndexedDB – volle CDN-Geschwindigkeit, keine Drosselung, und OpenTopoMap
+wird nicht von jedem Gerät neu belastet. Lizenz: CC-BY-SA
+(© OpenStreetMap-Mitwirkende, SRTM | Kartendarstellung © OpenTopoMap),
+Attribution bleibt an der Kartenansicht. Ändert sich die Route, den
+Workflow einfach neu laufen lassen.
 
 ## Installation & Updates
 

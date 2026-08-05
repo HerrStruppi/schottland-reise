@@ -1,0 +1,40 @@
+# Einmaliger Kachel-Einsammler: lädt den Geländekarten-Korridor von OpenTopoMap
+# (höflich, 2 Verbindungen) und committet die Paketdateien nach tiles/.
+# Läuft nur auf Zuruf: manuell über "Run workflow" oder wenn ein Push, der
+# dieses Workflow-File bzw. topo-harvest.mjs ändert, "[harvest]" in der
+# Commit-Message trägt.
+name: Geländekarte einsammeln
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/harvest-topo.yml'
+      - 'topo-harvest.mjs'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: harvest
+  cancel-in-progress: false
+
+jobs:
+  harvest:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[harvest]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Kacheln laden und packen
+        run: node topo-harvest.mjs
+
+      - name: Pakete committen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tiles/topo-pack-*.tpk tiles/topo-meta.json
+          git commit -m "Geländekarte: Kachelpakete für Selbst-Hosting (OpenTopoMap-Spiegel, CC-BY-SA)"
+          git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -162,8 +162,24 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Das Offline-Paket selbst nie abfangen (Download läuft über die Seite)
-  if (url.pathname.endsWith('.pmtiles')) return;
+  // Die Offline-Pakete selbst nie abfangen (Download läuft über die Seite)
+  if (url.pathname.endsWith('.pmtiles') || url.pathname.endsWith('.tpk')) return;
+
+  // Geländekarten-Meta: Netz zuerst (frischer Build-Stand), sonst letzte
+  // bekannte Fassung – so funktioniert der Offline-Check auch ohne Netz.
+  if (url.origin === self.location.origin && url.pathname.endsWith('tiles/topo-meta.json')) {
+    e.respondWith((async () => {
+      const cache = await caches.open('topometa-v1');
+      try {
+        const resp = await fetch(e.request);
+        if (resp.ok) cache.put('topo-meta', resp.clone());
+        return resp;
+      } catch (err) {
+        return (await cache.match('topo-meta')) || new Response('', { status: 503 });
+      }
+    })());
+    return;
+  }
 
   // Etappen-Fotos (Wikimedia/Geograph/Komoot): cache first, dauerhaft offline
   if (/wikimedia\.org|wikipedia\.org|geograph\.org|komoot\.|cloudfront\.net/.test(url.host)) {
