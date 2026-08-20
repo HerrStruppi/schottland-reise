@@ -51,6 +51,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add tiles/topo-pack-*.tpk tiles/topo-meta.json
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen an den Paketen – nichts zu committen."
+            exit 0
+          fi
           git commit -m "Geländekarte: Kachelpakete für Selbst-Hosting (OpenTopoMap-Spiegel, CC-BY-SA)"
           git pull --rebase origin "${GITHUB_REF_NAME}" || true
           git push origin "HEAD:${GITHUB_REF_NAME}"

@@ -23,7 +23,12 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const RAW = path.join(ROOT, 'topo-tiles');          // Roh-Kacheln (gitignored)
 const OUT = path.join(ROOT, 'tiles');
 const UA = 'schottland-reise-offline-pack/1.0 (+https://github.com/HerrStruppi/schottland-reise; einmaliger Korridor-Download, danach Selbst-Hosting)';
-const CONC = 2;                                     // OSM-Tile-Policy: max. 2
+const CONC = 4;                                     // moderat; 429/503 bremsen zusätzlich
+/* Zwei verschiedene Sorten Lücke, die man nicht gleich behandeln darf:
+   404/403 heißt "gibt es dort nicht" – Wiederholen hilft nie.
+   Netzfehler/5xx heißen "gerade nicht" – die kann ein Folgelauf holen.
+   Nur Letztere sind ein Grund, den Paketbau zu verweigern. */
+const MAX_UNRESOLVED = 0.02;                        // 2 % echte Ausfälle toleriert
 const PART_MAX = 88 * 1024 * 1024;                  // GitHub-Limit: 100 MB/Datei
 const BUILD = (process.env.GITHUB_SHA || 'dev').slice(0, 10) + '-' + new Date().toISOString().slice(0, 10);
 /* Zeitbudget: rechtzeitig VOR dem Job-Timeout sauber aufhören, damit der
@@ -64,15 +69,23 @@ function tileList() {
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
+const ABSENT_FILE = path.join(RAW, '_absent.json');
+function loadAbsent() {
+  try { return new Set(JSON.parse(fs.readFileSync(ABSENT_FILE, 'utf8'))); } catch { return new Set(); }
+}
+
 async function harvest(list) {
   fs.mkdirSync(RAW, { recursive: true });
+  const known = loadAbsent();
   const todo = list.filter(k => {
+    if (known.has(k)) return false;                 // schon als nicht vorhanden bekannt
     const f = path.join(RAW, k.replaceAll('/', '_') + '.png');
     return !(fs.existsSync(f) && fs.statSync(f).size > 0);
   });
-  console.log(`${list.length} Kacheln im Korridor, ${todo.length} fehlen noch.`);
+  console.log(`${list.length} Kacheln im Korridor, ${todo.length} fehlen noch` +
+    (known.size ? `, ${known.size} bekannt nicht vorhanden.` : '.'));
   let next = 0, done = 0, pauseUntil = 0, backoff = 4000;
-  const failed = [];
+  const failed = [], absent = [...known];
   const t0 = Date.now();
   const SUB = ['a', 'b', 'c'];
 
@@ -101,6 +114,14 @@ async function harvest(list) {
             console.log(`HTTP ${r.status} – Pause ${Math.round(wait / 1000)}s (Kachel ${k})`);
             continue;
           }
+          if (r.status === 404 || r.status === 403 || r.status === 410) {
+            /* Endgültig: Die Kachel gibt es dort nicht. Achtmal nachfragen
+               kostet nur Zeit. Fehlende Kacheln sind unkritisch – der Service
+               Worker lässt an der Stelle die Vektorkarte durchscheinen. */
+            absent.push(k);
+            saved = true;
+            break;
+          }
           if (!r.ok) throw new Error('HTTP ' + r.status);
           const buf = Buffer.from(await r.arrayBuffer());
           if (!buf.subarray(0, 4).equals(PNG_MAGIC)) throw new Error('kein PNG');
@@ -121,13 +142,18 @@ async function harvest(list) {
     }
   }
   await Promise.all(Array.from({ length: CONC }, () => worker()));
+  if (absent.length) {
+    fs.writeFileSync(ABSENT_FILE, JSON.stringify(absent));
+    console.log(`${absent.length} Kacheln gibt es bei OpenTopoMap nicht (404/403) – übersprungen.`);
+  }
   if (failed.length) {
     console.error(`${failed.length} Kacheln in diesem Lauf gescheitert (erste 20):\n` + failed.slice(0, 20).join('\n'));
   }
+  return { absent, failed };
 }
 
 /* ---------- Packen: Teile ≤ 88 MB, niedrige Zoomstufen zuerst ---------- */
-function pack(list) {
+function pack(list, stats = {}) {
   // z aufsteigend, dann x/y – so ist die Karte schon nach dem ersten Teil
   // grob nutzbar und wird mit jedem weiteren Teil feiner.
   const sorted = [...list].sort((a, b) => {
@@ -164,6 +190,9 @@ function pack(list) {
     build: BUILD,
     zooms: '8-16',
     tiles: list.length,
+    corridor: stats.total ?? list.length,
+    missing: stats.missing ?? 0,
+    absent: stats.absent ?? 0,
     size: parts.reduce((a, p) => a + p.size, 0),
     parts,
     attribution: '© OpenStreetMap-Mitwirkende, SRTM | Kartendarstellung © OpenTopoMap (CC-BY-SA)'
@@ -173,16 +202,28 @@ function pack(list) {
 }
 
 const list = tileList();
-await harvest(list);
-/* Nur packen, wenn wirklich alles da ist – sonst mit Fehlercode enden:
-   der Cache rettet den Zwischenstand, der nächste Lauf setzt fort. */
-const missing = list.filter(k => {
+const { absent } = await harvest(list);
+
+const have = list.filter(k => {
   const f = path.join(RAW, k.replaceAll('/', '_') + '.png');
-  return !(fs.existsSync(f) && fs.statSync(f).size > 0);
+  return fs.existsSync(f) && fs.statSync(f).size > 0;
 });
-if (missing.length) {
-  console.error(`${missing.length} von ${list.length} Kacheln fehlen noch – Pakete werden nicht gebaut. ` +
+const missing = list.length - have.length;
+const unresolved = missing - absent.length;
+console.log(`${have.length} von ${list.length} Kacheln vorhanden ` +
+  `(${(have.length / list.length * 100).toFixed(2)} %); ` +
+  `${absent.length} nicht vorhanden, ${unresolved} offen.`);
+
+/* Früher wurde hier bei auch nur einer fehlenden Kachel abgebrochen. Das hat
+   einen kurzen 404-Schluckauf des Kartenservers in den Totalverlust eines
+   sechsstündigen Laufs verwandelt – und weil der Actions-Cache nach sieben
+   Tagen verfällt, war der Zwischenstand dann auch weg. Fehlende Kacheln sind
+   in Wahrheit harmlos: Der Service Worker lässt dort einfach die Vektorkarte
+   durchscheinen. Also packen wir, sobald der Korridor im Wesentlichen steht,
+   und schreiben die Lücken in die Metadaten. */
+if (unresolved > list.length * MAX_UNRESOLVED) {
+  console.error(`${unresolved} Kacheln noch offen (über ${(MAX_UNRESOLVED * 100)} %) – keine Pakete gebaut. ` +
     'Zwischenstand liegt in topo-tiles/ (Actions-Cache); der nächste Lauf setzt dort fort.');
   process.exit(1);
 }
-pack(list);
+pack(have, { total: list.length, missing, absent: absent.length });
