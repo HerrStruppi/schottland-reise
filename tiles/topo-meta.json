@@ -1,11 +1,10 @@
 {
- "build": "4e8ef7bff9-2026-08-20",
+ "build": "06c8e7c790-2026-08-20",
  "zooms": "8-16",
- "tiles": 25149,
+ "tiles": 25991,
  "corridor": 25991,
- "missing": 842,
- "absent": 842,
- "size": 371541769,
+ "missing": 0,
+ "size": 379569480,
  "parts": [
   {
    "file": "topo-pack-0.tpk",
@@ -19,18 +18,18 @@
   },
   {
    "file": "topo-pack-2.tpk",
-   "size": 92451664,
-   "tiles": 7250
+   "size": 92449023,
+   "tiles": 7247
   },
   {
    "file": "topo-pack-3.tpk",
-   "size": 92506652,
-   "tiles": 9518
+   "size": 92510124,
+   "tiles": 9698
   },
   {
    "file": "topo-pack-4.tpk",
-   "size": 1847840,
-   "tiles": 79
+   "size": 9874720,
+   "tiles": 744
   }
  ],
  "attribution": "© OpenStreetMap-Mitwirkende, SRTM | Kartendarstellung © OpenTopoMap (CC-BY-SA)"
