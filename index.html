@@ -914,10 +914,23 @@ function lineBounds(id) {
   (g.data.coordsAlt || []).forEach(c => b.extend(c));
   return b;
 }
+/* Wird die App auf iOS in den Hintergrund geschickt, läuft beim Zurückkommen
+   kurz JS, während die Seite noch 0×0 groß ist. Rechnet Leaflet genau dann
+   einen Kartenflug aus, entsteht NaN – und die Karte ist danach DAUERHAFT
+   kaputt (jeder weitere Tap wirft denselben Fehler). Deshalb: Fits bei
+   unsichtbarer Karte aufschieben und nachholen, sobald sie wieder Größe hat. */
+let pendingFit = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  map.invalidateSize();
+  if (pendingFit) { const b = pendingFit; pendingFit = null; fitWithSheet(b, false); }
+});
 function fitWithSheet(bounds, fly) {
   if (!bounds || !bounds.isValid()) return;
   map.stop();
   const size = map.getSize();
+  if (!size.x || !size.y) { pendingFit = bounds; return; }
+  pendingFit = null;
   /* Wichtig: Das Padding darf nie größer werden als die Karte selbst –
      sonst rechnet Leaflet mit einer negativen Fläche und zoomt bis auf
      Kontinent-Ebene heraus. Darum auf 45 % der Kartenhöhe deckeln. */
@@ -927,8 +940,22 @@ function fitWithSheet(bounds, fly) {
   const opts = {
     paddingTopLeft: [side, top], paddingBottomRight: [side, bottom], maxZoom: 15
   };
-  if (fly) map.flyToBounds(bounds, Object.assign({ duration: 0.7 }, opts));
-  else map.fitBounds(bounds, Object.assign({ animate: false }, opts));
+  try {
+    if (fly) map.flyToBounds(bounds, Object.assign({ duration: 0.7 }, opts));
+    else map.fitBounds(bounds, Object.assign({ animate: false }, opts));
+  } catch (e) {
+    /* Letzte Verteidigungslinie: lieber ein Fit ohne Animation als eine
+       dauerhaft kaputte Karte. */
+    try { map.fitBounds(bounds, Object.assign({ animate: false }, opts)); } catch (e2) { /* aufgeben */ }
+  }
+}
+/* Direkte Kartenflüge (Camps, Orte) genauso absichern. */
+function safeFly(latlng, zoom) {
+  map.stop();
+  const s = map.getSize();
+  if (!s.x || !s.y) { pendingFit = L.latLngBounds([latlng, latlng]); return; }
+  try { map.flyTo(latlng, zoom, { duration: 0.7 }); }
+  catch (e) { try { map.setView(latlng, zoom, { animate: false }); } catch (e2) { /* aufgeben */ } }
 }
 
 /* ================= Bottom Sheet =================
@@ -1351,8 +1378,7 @@ function renderStage(id, fly) {
   }
 }
 window.zoomStop = (lat, lng) => {
-  map.stop();
-  map.flyTo([lat, lng], 12, { duration: 0.7 });
+  safeFly([lat, lng], 12);
 };
 
 /* ---------- Foto-Großansicht ---------- */
@@ -1566,8 +1592,7 @@ function renderPlace(id) {
   if (!p) return;
   maybeSnap('half');
   resetStyles();
-  map.stop();
-  map.flyTo([p.lat, p.lng], p.kind === 'town' ? 13 : 12, { duration: 0.7 });
+  safeFly([p.lat, p.lng], p.kind === 'town' ? 13 : 12);
   const near = stagesNearPoint([p.lat, p.lng], 8);
   const camps = (window.CAMPS || []).filter(c =>
     haversineKm([p.lat, p.lng], [c.lat, c.lng]) <= 3.5);
@@ -1619,8 +1644,7 @@ function renderCamp(id) {
   if (!c) return;
   maybeSnap('half');
   resetStyles();
-  map.stop();
-  map.flyTo([c.lat, c.lng], 14, { duration: 0.7 });
+  safeFly([c.lat, c.lng], 14);
   const t = CAMP_TYPES[campType(c)];
   const iconStyle = c.osm
     ? `background:#fff;border:1.5px dashed ${t.color};color:${t.color}`
@@ -1822,7 +1846,7 @@ document.getElementById('fitBtn').addEventListener('click', () => {
   else if (view && view.t === 'vstage') focusVariant(vstageLayers[view.id].variant.id, true, false, view.id);
   else if (view && view.t === 'place') {
     const p = placeById[view.id];
-    map.stop(); map.flyTo([p.lat, p.lng], p.kind === 'town' ? 13 : 12, { duration: 0.7 });
+    safeFly([p.lat, p.lng], p.kind === 'town' ? 13 : 12);
   } else fitAll(true);
 });
 
