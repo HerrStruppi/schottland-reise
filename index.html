@@ -2077,7 +2077,8 @@ async function idbSet(key, val, store = 'kv') {
     const tx = db.transaction(store, 'readwrite');
     tx.objectStore(store).put(val, key);
     tx.oncomplete = () => res();
-    tx.onerror = () => rej(tx.error);
+    tx.onerror = () => rej(tx.error || new Error('IndexedDB-Fehler'));
+    tx.onabort = () => rej(tx.error || new Error('IndexedDB-Transaktion abgebrochen'));
   });
 }
 /* Viele kleine Kacheln in EINER Transaktion – einzeln wäre es zehnmal langsamer */
@@ -2089,7 +2090,8 @@ async function idbPutMany(entries, store) {
     const os = tx.objectStore(store);
     for (const [k, v] of entries) os.put(v, k);
     tx.oncomplete = () => res();
-    tx.onerror = () => rej(tx.error);
+    tx.onerror = () => rej(tx.error || new Error('IndexedDB-Fehler'));
+    tx.onabort = () => rej(tx.error || new Error('IndexedDB-Transaktion abgebrochen'));
   });
 }
 async function idbKeys(store) {
@@ -2106,7 +2108,8 @@ async function idbClear(store) {
     const tx = db.transaction(store, 'readwrite');
     tx.objectStore(store).clear();
     tx.oncomplete = () => res();
-    tx.onerror = () => rej(tx.error);
+    tx.onerror = () => rej(tx.error || new Error('IndexedDB-Fehler'));
+    tx.onabort = () => rej(tx.error || new Error('IndexedDB-Transaktion abgebrochen'));
   });
 }
 
@@ -2206,23 +2209,78 @@ async function topoCheck() {
 }
 /* Ein Paketteil in Einzelkacheln zerlegen und nach IndexedDB schreiben.
    Blob.slice kopiert nichts – erst idbPutMany materialisiert die Bytes. */
-async function unpackTopoPart(blob) {
-  const head = new DataView(await blob.slice(0, 8).arrayBuffer());
-  if (head.getUint32(0) !== 0x54504b31) throw new Error('Paketformat unbekannt');
-  const idxLen = head.getUint32(4, true);
-  const index = JSON.parse(await blob.slice(8, 8 + idxLen).text());
-  let off = 8 + idxLen, batch = [];
-  for (const [key, len] of index) {
-    batch.push([key, blob.slice(off, off + len, 'image/png')]);
-    off += len;
-    if (batch.length >= 64) {
-      await idbPutMany(batch, 'topo');
-      TOPO.done += batch.length; batch = [];
+/* Paket direkt aus dem Netzstrom auspacken, Kachel für Kachel.
+   Früher wurde das ganze 88-MB-Teil erst als Blob gesammelt und dann in
+   Scheiben in die Datenbank gelegt – auf dem iPhone hing der Download damit
+   exakt bei 24 % (Ende von Teil 0) fest: WebKit ist beim Ablegen von
+   Blob-Scheiben in IndexedDB unzuverlässig, die Transaktion meldet sich nie,
+   und weil der Abbruch-Check nur im Netz-Teil saß, war auch der
+   Abbrechen-Knopf wirkungslos. Jetzt: kleine Warteschlange statt Riesen-Blob
+   (Speicherbedarf wenige MB), Kacheln als ArrayBuffer statt Blob (der
+   zuverlässige Weg in WebKit), Fortschritt und Abbruch bei jedem Häppchen.
+   Gibt false zurück, wenn abgebrochen wurde. */
+async function streamTopoPart(part, build) {
+  const resp = await fetch('tiles/' + part.file + '?v=' + encodeURIComponent(build), { cache: 'no-store' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const reader = resp.body.getReader();
+  const q = []; let qLen = 0, qOff = 0, got = 0;
+  const take = n => {                         // n Bytes vorn aus der Warteschlange
+    if (qLen < n) return null;
+    const out = new Uint8Array(n); let o = 0;
+    while (o < n) {
+      const head = q[0], cnt = Math.min(head.length - qOff, n - o);
+      out.set(head.subarray(qOff, qOff + cnt), o);
+      o += cnt; qOff += cnt;
+      if (qOff === head.length) { q.shift(); qOff = 0; }
+    }
+    qLen -= n; return out;
+  };
+  let index = null, idxLen = 0, pos = 0, batch = [], lastPaint = 0;
+  const flush = async () => {
+    if (!batch.length) return;
+    const b = batch; batch = [];
+    await idbPutMany(b, 'topo');
+    TOPO.done += b.length;
+  };
+  for (;;) {
+    if (TOPO.cancel) { try { reader.cancel(); } catch (e) { /* egal */ } return false; }
+    const { done: rd, value } = await reader.read();
+    if (rd) break;
+    q.push(value); qLen += value.length; got += value.length;
+    TOPO.bytes += value.length;
+    if (!index) {
+      if (!idxLen) {
+        const h = take(8);
+        if (h) {
+          const dv = new DataView(h.buffer);
+          if (dv.getUint32(0) !== 0x54504b31) throw new Error('Paketformat unbekannt');
+          idxLen = dv.getUint32(4, true);
+        }
+      }
+      if (idxLen && !index) {
+        const raw = take(idxLen);
+        if (raw) { index = JSON.parse(new TextDecoder().decode(raw)); pos = 0; }
+      }
+      if (!index) continue;
+    }
+    while (pos < index.length && qLen >= index[pos][1] && !TOPO.cancel) {
+      const [key, len] = index[pos];
+      batch.push([key, take(len)]);
+      pos++;
+      if (batch.length >= 96) await flush();
+    }
+    const now = performance.now();
+    if (now - lastPaint > 400) {
+      lastPaint = now;
+      TOPO.pct = Math.min(99, Math.floor(TOPO.bytes / TOPO.meta.size * 100));
       renderOfflineRow();
     }
   }
-  if (batch.length) { await idbPutMany(batch, 'topo'); TOPO.done += batch.length; }
-  TOPO.bytes += blob.size;
+  if (TOPO.cancel) return false;
+  if (part.size && got !== part.size) throw new Error('unvollständig (' + fmtMb(got) + ')');
+  if (!index || pos < index.length) throw new Error('Paket unvollständig entpackt');
+  await flush();
+  return true;
 }
 window.downloadTopo = async () => {
   if (TOPO.state === 'loading') { TOPO.cancel = true; return; }
@@ -2239,27 +2297,14 @@ window.downloadTopo = async () => {
   try {
     for (let i = 0; i < meta.parts.length && !TOPO.cancel; i++) {
       if (done[i]) continue;
-      const part = meta.parts[i];
-      const resp = await fetch('tiles/' + part.file + '?v=' + encodeURIComponent(meta.build), { cache: 'no-store' });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const reader = resp.body.getReader();
-      const chunks = []; let got = 0, lastPct = -1;
-      for (;;) {
-        const { done: rd, value } = await reader.read();
-        if (rd) break;
-        if (TOPO.cancel) { reader.cancel(); break; }
-        chunks.push(value); got += value.length;
-        const pct = Math.min(99, Math.floor((gotBytes + got) / meta.size * 100));
-        if (pct !== lastPct) { lastPct = pct; TOPO.pct = pct; renderOfflineRow(); }
-      }
-      if (TOPO.cancel) break;
-      if (part.size && got !== part.size) throw new Error('unvollständig (' + fmtMb(got) + ')');
-      TOPO.bytes = gotBytes;                      // unpackTopoPart zählt den Teil dazu
-      await unpackTopoPart(new Blob(chunks));
-      chunks.length = 0;
+      TOPO.bytes = gotBytes;                      // Basis, streamTopoPart zählt weiter
+      const ok = await streamTopoPart(meta.parts[i], meta.build);
+      if (!ok) break;                             // abgebrochen
+      gotBytes += meta.parts[i].size;
+      TOPO.bytes = gotBytes;
       done[i] = true;
       localStorage.setItem('topo.parts', JSON.stringify({ build: meta.build, done }));
-      gotBytes += part.size;
+      renderOfflineRow();
     }
   } catch (e) { TOPO.err = e.message; }
   localStorage.setItem('topo.total', String(meta.tiles));
